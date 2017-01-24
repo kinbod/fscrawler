@@ -9,12 +9,12 @@ script:
   - mvn --batch-mode clean dependency:resolve dependency:resolve-plugins install -DskipTests -Dsilent=true > /dev/null
 # Let's skip for now branch 1.x
 #  - mvn --batch-mode clean verify -Pes-1x
-  - mvn --batch-mode clean verify -Pes-2x-travis
-  - mvn -batch-mode clean verify
-  - "[[ ${TRAVIS_PULL_REQUEST} == 'false' ]] && [[ ${TRAVIS_TAG} == '' ]] && mvn deploy -DskipTests --settings deploy-settings.xml"
+#  - mvn --batch-mode clean verify -Pes-2x-travis
+  - mvn -batch-mode clean verify -DskipUnitTests -Dtests.output=always -DskipXPack=true
+#  - "[[ ${TRAVIS_PULL_REQUEST} == 'false' ]] && [[ ${TRAVIS_TAG} == '' ]] && mvn deploy -DskipTests --settings deploy-settings.xml"
 #after_success:
 #  - "[[ ${TRAVIS_PULL_REQUEST} == 'false' ]] && [[ ${TRAVIS_TAG} == '' ]] && mvn deploy -DskipTests --settings deploy-settings.xml"
 after_failure:
   - echo "As we got a failure, let's see what we have in elasticsearch cluster logs"
-  - cat target/integration-tests/run/elasticsearch-*/logs/elasticsearch_integration.log
+#  - cat target/integration-tests/run/elasticsearch-*/logs/elasticsearch_integration.log
 
