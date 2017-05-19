@@ -5,7 +5,7 @@ jdk:
 install: true
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y tesseract-ocr --with-all-languages --with-serial-num-pack
+  - sudo apt-get install -y tesseract-ocr
 before_script:
   - sudo sysctl -w vm.max_map_count=262144
 script:
