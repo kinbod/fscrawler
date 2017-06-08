@@ -77,11 +77,11 @@ public class FsCrawler {
                 "This does not clean elasticsearch indices.")
         private boolean restart = false;
 
-        @Parameter(names = "--update_mapping", description = "Update elasticsearch mapping")
-        private boolean updateMapping = false;
-
         @Parameter(names = "--rest", description = "Start REST Layer")
         private boolean rest = false;
+
+        @Parameter(names = "--upgrade", description = "Upgrade elasticsearch indices from one old version to the last version.")
+        private boolean upgrade = false;
 
         @Parameter(names = "--debug", description = "Debug mode")
         private boolean debug = false;
@@ -229,18 +229,38 @@ public class FsCrawler {
         }
 
         logger.trace("settings used for this crawler: [{}]", FsSettingsParser.toJson(fsSettings));
-        fsCrawler = new FsCrawlerImpl(configDir, fsSettings, commands.loop, commands.updateMapping, commands.rest);
+        fsCrawler = new FsCrawlerImpl(configDir, fsSettings, commands.loop, commands.rest);
         Runtime.getRuntime().addShutdownHook(new FSCrawlerShutdownHook(fsCrawler));
+
         try {
-            fsCrawler.start();
-            // We just have to wait until the process is stopped
-            while (!fsCrawler.isClosed()) {
-                sleep();
+            // Let see if we want to upgrade an existing cluster to latest version
+            if (commands.upgrade) {
+                logger.info("Upgrading job [{}]", jobName);
+                boolean success = fsCrawler.upgrade();
+                if (success) {
+                    // We can propose to remove the old index
+                    String yesno = null;
+                    while (!"y".equalsIgnoreCase(yesno) && !"n".equalsIgnoreCase(yesno)) {
+                        logger.info("Do you want to remove old index [{}] (Y/N)?", fsSettings.getElasticsearch().getIndex());
+                        yesno = scanner.next();
+                    }
+
+                    if ("y".equalsIgnoreCase(yesno)) {
+                        fsCrawler.remove(fsSettings.getElasticsearch().getIndex());
+                        logger.info("Index [{}] has been removed", fsSettings.getElasticsearch().getIndex());
+                    }
+                }
+            } else {
+                fsCrawler.start();
+                // We just have to wait until the process is stopped
+                while (!fsCrawler.isClosed()) {
+                    sleep();
+                }
             }
-            fsCrawler.close();
         } catch (Exception e) {
             logger.fatal("Fatal error received while running the crawler: [{}]", e.getMessage());
             logger.debug("error caught", e);
+        } finally {
             if (fsCrawler != null) {
                 fsCrawler.close();
             }

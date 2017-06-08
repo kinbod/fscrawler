@@ -28,7 +28,6 @@ import fr.pilato.elasticsearch.crawler.fs.meta.settings.Rest;
 import fr.pilato.elasticsearch.crawler.fs.meta.settings.TimeValue;
 import fr.pilato.elasticsearch.crawler.fs.rest.RestJsonProvider;
 import fr.pilato.elasticsearch.crawler.fs.test.AbstractFSCrawlerTestCase;
-import fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil;
 import org.apache.logging.log4j.Level;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.ResponseException;
@@ -281,7 +280,7 @@ public abstract class AbstractITCase extends AbstractFSCrawlerTestCase {
             }
 
             try {
-                response[0] = elasticsearchClient.search(indexName, FsCrawlerUtil.INDEX_TYPE_DOC, sr.build());
+                response[0] = elasticsearchClient.search(indexName, sr.build());
             } catch (IOException e) {
                 staticLogger.warn("error caught", e);
                 return false;

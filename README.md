@@ -7,12 +7,12 @@ It crawls your file system and index new files, update existing ones and removes
 
 You need to install a version matching your Elasticsearch version:
 
-| Elasticsearch |  FS Crawler | Released |                                       Docs                                   |
-|---------------|-------------|----------|------------------------------------------------------------------------------|
-| 1.x, 2.x, 5.x | 2.3-SNAPSHOT|          |See below                                                                     |
-| 1.x, 2.x, 5.x | **2.2**     |2017-02-03|[2.2](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.2/README.md)     |
-| 1.x, 2.x, 5.x | 2.1         |2016-07-26|[2.1](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.1/README.md)     |
-|    es-2.0     | 2.0.0       |2015-10-30|[2.0.0](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.0.0/README.md) |
+|    Elasticsearch   |  FS Crawler | Released |                                       Docs                                   |
+|--------------------|-------------|----------|------------------------------------------------------------------------------|
+| 1.x, 2.x, 5.x, 6.x | 2.3-SNAPSHOT|          |See below                                                                     |
+| 1.x, 2.x, 5.x      | **2.2**     |2017-02-03|[2.2](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.2/README.md)     |
+| 1.x, 2.x, 5.x      | 2.1         |2016-07-26|[2.1](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.1/README.md)     |
+|    es-2.0          | 2.0.0       |2015-10-30|[2.0.0](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.0.0/README.md) |
 
 From FS Crawler 2.1, all elasticsearch versions since 1.0 are supported.
 
@@ -125,6 +125,44 @@ You can disable explicitly it by setting `fs.pdf_ocr` to `false`.
 * All dates are now indexed in elasticsearch in UTC instead of without any time zone. For example, we were indexing
 previously a date like `2017-05-19T13:24:47.000`. Which was producing bad results when you were located in a time zone
 other than UTC. It's now indexed as `2017-05-19T13:24:47.000+0000`.
+
+* In order to be compatible with the coming 6.0 elasticsearch version, we need to get rid of types as only one type
+per index is still supported. Which means that we now create index named `job_name_doc` and `job_name_folder` instead
+of one index `job_name` with two types `doc` and `folder`. If you are upgrading from FSCrawler 2.2, it requires that
+you reindex your existing data either by deleting the old index and running again FSCrawler or by using the
+[reindex API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html) as follows:
+
+```
+POST _reindex
+{
+  "source": {
+    "index": "job_name",
+    "type": "doc"
+  },
+  "dest": {
+    "index": "job_name_doc"
+  }
+}
+POST _reindex
+{
+  "source": {
+    "index": "job_name",
+    "type": "folder"
+  },
+  "dest": {
+    "index": "job_name_folder"
+  }
+}
+```
+
+Note that you will need first to create the right settings and mappings so you can then run the reindex job.
+You can do that by launching `bin/fscrawler job_name --loop 0`.
+
+Better, you can run `bin/fscrawler job_name --upgrade` and let FSCrawler doing all that for you. Note that this can take
+a loooong time.
+
+Also please be aware that reindex API is only available from elasticsearch 2.3. If you are running an older version
+you need first to upgrade elasticsearch.
 
 # User Guide
 

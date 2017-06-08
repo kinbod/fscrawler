@@ -77,7 +77,8 @@ public class FsCrawlerImplAllDocumentsIT extends AbstractITCase {
         Long numFiles = Files.list(testResourceTarget).count();
 
         staticLogger.info(" -> Removing existing index [fscrawler_test_all_documents]");
-        elasticsearchClient.deleteIndex("fscrawler_test_all_documents");
+        elasticsearchClient.deleteIndex("fscrawler_test_all_documents_doc");
+        elasticsearchClient.deleteIndex("fscrawler_test_all_documents_folder");
 
         staticLogger.info("  --> starting crawler in [{}] which contains [{}] files", testResourceTarget, numFiles);
 
@@ -94,7 +95,7 @@ public class FsCrawlerImplAllDocumentsIT extends AbstractITCase {
         crawler.start();
 
         // We wait until we have all docs
-        countTestHelper("fscrawler_test_all_documents", null, numFiles.intValue(), null, TimeValue.timeValueMinutes(1));
+        countTestHelper("fscrawler_test_all_documents_doc", null, numFiles.intValue(), null, TimeValue.timeValueMinutes(1));
     }
 
     @AfterClass
@@ -231,7 +232,7 @@ public class FsCrawlerImplAllDocumentsIT extends AbstractITCase {
         if (content != null) {
             fullQuery += " +content:" + content;
         }
-        SearchResponse response = elasticsearchClient.search("fscrawler_test_all_documents", null, fullQuery, null, (String[]) null);
+        SearchResponse response = elasticsearchClient.search("fscrawler_test_all_documents_doc", fullQuery, null, (String[]) null);
         assertThat(response.getHits().getTotal(), is(1L));
         return response;
     }

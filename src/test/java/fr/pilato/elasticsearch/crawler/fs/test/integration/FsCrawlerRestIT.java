@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_DOC;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -61,7 +62,7 @@ public class FsCrawlerRestIT extends AbstractRestITCase {
         Long numFiles = Files.list(from).count();
 
         // We wait until we have all docs
-        countTestHelper(REST_INDEX, null, numFiles.intValue(), null, TimeValue.timeValueMinutes(1));
+        countTestHelper(REST_INDEX + INDEX_SUFFIX_DOC, null, numFiles.intValue(), null, TimeValue.timeValueMinutes(1));
     }
 
     private static final Map<String, Object> debugOption = new HashMap<>();

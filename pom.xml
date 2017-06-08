@@ -685,6 +685,21 @@
             </properties>
         </profile>
         <profile>
+            <id>es-6x</id>
+            <properties>
+                <elasticsearch.groupid>org.elasticsearch.distribution.zip</elasticsearch.groupid>
+                <elasticsearch.version>6.0.0-alpha2</elasticsearch.version>
+            </properties>
+        </profile>
+        <profile>
+            <id>es-6x-travis</id>
+            <properties>
+                <elasticsearch.groupid>org.elasticsearch.distribution.zip</elasticsearch.groupid>
+                <elasticsearch.version>6.0.0-alpha2</elasticsearch.version>
+                <skipXPack>true</skipXPack>
+            </properties>
+        </profile>
+        <profile>
             <id>skipXPack</id>
             <activation>
                 <property>

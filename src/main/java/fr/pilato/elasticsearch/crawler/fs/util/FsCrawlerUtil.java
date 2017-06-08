@@ -55,8 +55,12 @@ import java.util.List;
 import java.util.TimeZone;
 
 public class FsCrawlerUtil extends MetaParser {
+    @Deprecated
     public static final String INDEX_TYPE_DOC = "doc";
+    @Deprecated
     public static final String INDEX_TYPE_FOLDER = "folder";
+    public static final String INDEX_SUFFIX_DOC = "_doc";
+    public static final String INDEX_SUFFIX_FOLDER = "_folder";
     public static final String INDEX_SETTINGS_FILE = "_settings";
 
     static public final class Dir {
@@ -278,7 +282,8 @@ public class FsCrawlerUtil extends MetaParser {
     public static final String[] MAPPING_RESOURCES = {
             "1/doc.json", "1/folder.json", "1/_settings.json",
             "2/doc.json", "2/folder.json", "2/_settings.json",
-            "5/doc.json", "5/folder.json", "5/_settings.json"
+            "5/doc.json", "5/folder.json", "5/_settings.json",
+            "6/doc.json", "6/folder.json", "6/_settings.json"
     };
 
     /**
