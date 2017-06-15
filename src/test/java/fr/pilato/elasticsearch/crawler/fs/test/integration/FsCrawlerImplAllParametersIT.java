@@ -1304,6 +1304,7 @@ public class FsCrawlerImplAllParametersIT extends AbstractITCase {
         countTestHelper(getCrawlerName() + INDEX_SUFFIX_DOC, null, 1, currentTestResourceDir);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void test_upgrade_version() throws Exception {
         // We can only run this test if elasticsearch version is >= 2.3 and < 6.0

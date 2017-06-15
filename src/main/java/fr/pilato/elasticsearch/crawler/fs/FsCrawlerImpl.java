@@ -65,14 +65,17 @@ import java.util.stream.Collectors;
 import static fr.pilato.elasticsearch.crawler.fs.FsCrawlerValidator.validateSettings;
 import static fr.pilato.elasticsearch.crawler.fs.client.ElasticsearchClient.extractFromPath;
 import static fr.pilato.elasticsearch.crawler.fs.tika.TikaDocParser.generate;
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_TYPE_DOC;
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_TYPE_FOLDER;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.localDateTimeToDate;
 
 /**
  * @author dadoonet (David Pilato)
  */
 public class FsCrawlerImpl {
+
+    @Deprecated
+    public static final String INDEX_TYPE_FOLDER = "folder";
+    @Deprecated
+    public static final String INDEX_TYPE_DOC = "doc";
 
     public static final class PROTOCOL {
         public static final String LOCAL = "local";
@@ -158,11 +161,16 @@ public class FsCrawlerImpl {
         }
     }
 
+    public ElasticsearchClientManager getEsClientManager() {
+        return esClientManager;
+    }
+
     /**
      * Upgrade FSCrawler indices
      * @return true if done successfully
      * @throws Exception In case of error
      */
+    @SuppressWarnings("deprecation")
     public boolean upgrade() throws Exception {
         // We need to start a client so we can send requests to elasticsearch
         esClientManager.start();

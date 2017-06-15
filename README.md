@@ -352,19 +352,14 @@ It means that if you stop the job at some point, FS crawler will restart it from
 
 FS crawler will also store default mappings and index settings for elasticsearch in `~/.fscrawler/_default/_mappings`:
 
-TODO CHANGE THAT
-
-* `1/doc.json`: for elasticsearch 1.x series document mapping
-* `1/folder.json`: for elasticsearch 1.x series folder mapping
-* `1/_settings.json`: for elasticsearch 1.x series index settings
-* `2/doc.json`: for elasticsearch 2.x series document mapping
-* `2/folder.json`: for elasticsearch 2.x series folder mapping
-* `2/_settings.json`: for elasticsearch 2.x series index settings
-* `5/doc.json`: for elasticsearch 5.x series document mapping
-* `5/folder.json`: for elasticsearch 5.x series folder mapping
-* `5/_settings.json`: for elasticsearch 5.x series index settings
-* `6/folder.json`: for elasticsearch 6.x series folder mapping
-* `6/_settings.json`: for elasticsearch 6.x series index settings
+* `1/_settings_doc.json`: for elasticsearch 1.x series document index settings
+* `1/_settings_folder.json`: for elasticsearch 1.x series folder index settings
+* `2/_settings_doc.json`: for elasticsearch 2.x series document index settings
+* `2/_settings_folder.json`: for elasticsearch 2.x series folder index settings
+* `5/_settings_doc.json`: for elasticsearch 5.x series document index settings
+* `5/_settings_folder.json`: for elasticsearch 5.x series folder index settings
+* `6/_settings_doc.json`: for elasticsearch 6.x series document index settings
+* `6/_settings_folder.json`: for elasticsearch 6.x series folder index settings
 
 Read [Mapping](#mapping) for more information.
 
@@ -1189,11 +1184,9 @@ plus `_doc` suffix, like `test_doc`. You can change it by setting `index_doc` fi
 }
 ```
 
-TODO change that
-
-When FS crawler needs to create the index, it applies some default settings which are read from
-`~/.fscrawler/_default/5/_settings.json`. You can read its content from
-[the source](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/_settings.json).
+When FS crawler needs to create the doc index, it applies some default settings and mappings which are read from
+`~/.fscrawler/_default/5/_settings_doc.json`.
+You can read its content from [the source](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/_settings_doc.json).
 
 Settings define an analyzer named `fscrawler_path` which uses a
 [path hierarchy tokenizer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-pathhierarchy-tokenizer.html).
@@ -1210,16 +1203,16 @@ plus `_folder` suffix, like `test_folder`. You can change it by setting `index_f
 }
 ```
 
-FS crawler applies as well a mapping automatically which is read from `~/.fscrawler/_default/5/doc.json`.
-[Source here](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/doc.json).
+FS crawler applies as well a mapping automatically which is read from `~/.fscrawler/_default/5/_settings_folder.json`.
+[Source here](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/_settings_folder.json).
 
-You can also display the index mapping being used with Kibana
+You can also display the index mapping being used with Kibana:
 
 ```
 GET docs/_mapping
 ```
 
-or fall back to the command line
+Or fall back to the command line:
 
 ```sh
 curl 'http://localhost:9200/docs/_mapping?pretty'
@@ -1227,108 +1220,128 @@ curl 'http://localhost:9200/docs/_mapping?pretty'
 
 ##### Creating your own mapping (analyzers)
 
-If you want to define your own mapping to set analyzers for example, you can either push the mapping or define a
-`~/.fscrawler/_default/5/doc.json` document which contains the mapping you wish **before starting the FS crawler**.
+If you want to define your own index settings and mapping to set analyzers for example, you can either create the index
+and push the mapping or define a
+`~/.fscrawler/_default/5/_settings_doc.json` document which contains the index settings and mappings you wish
+**before starting the FS crawler**.
 
 The following example uses a `french` analyzer to index the `content` field.
 
 ```json
 {
-  "properties" : {
-    "attachment" : {
-      "type" : "binary",
-      "doc_values" : false
-    },
-    "attributes" : {
-      "properties" : {
-        "group" : {
-          "type" : "keyword"
-        },
-        "owner" : {
-          "type" : "keyword"
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "fscrawler_path": {
+          "tokenizer": "fscrawler_path"
+        }
+      },
+      "tokenizer": {
+        "fscrawler_path": {
+          "type": "path_hierarchy"
         }
       }
-    },
-    "content" : {
-      "type" : "text",
-      "analyzer" : "french"
-    },
-    "file" : {
+    }
+  },
+  "mappings": {
+    "doc": {
       "properties" : {
-        "content_type" : {
-          "type" : "keyword"
+        "attachment" : {
+          "type" : "binary",
+          "doc_values" : false
         },
-        "filename" : {
-          "type" : "keyword"
-        },
-        "extension" : {
-          "type" : "keyword"
-        },
-        "filesize" : {
-          "type" : "long"
-        },
-        "indexed_chars" : {
-          "type" : "long"
-        },
-        "indexing_date" : {
-          "type" : "date",
-          "format" : "dateOptionalTime"
-        },
-        "last_modified" : {
-          "type" : "date",
-          "format" : "dateOptionalTime"
-        },
-        "checksum": {
-          "type": "keyword"
-        },
-        "url" : {
-          "type" : "keyword",
-          "index" : false
-        }
-      }
-    },
-    "meta" : {
-      "properties" : {
-        "author" : {
-          "type" : "text"
-        },
-        "date" : {
-          "type" : "date",
-          "format" : "dateOptionalTime"
-        },
-        "keywords" : {
-          "type" : "text"
-        },
-        "title" : {
-          "type" : "text"
-        },
-        "language" : {
-          "type" : "keyword"
-        }
-      }
-    },
-    "path" : {
-      "properties" : {
-        "real" : {
-          "type" : "keyword",
-          "fields": {
-            "tree": {
-              "type" : "text",
-              "analyzer": "fscrawler_path",
-              "fielddata": true
+        "attributes" : {
+          "properties" : {
+            "group" : {
+              "type" : "keyword"
+            },
+            "owner" : {
+              "type" : "keyword"
             }
           }
         },
-        "root" : {
-          "type" : "keyword"
+        "content" : {
+          "type" : "text",
+          "analyzer" : "french"
         },
-        "virtual" : {
-          "type" : "keyword",
-          "fields": {
-            "tree": {
-              "type" : "text",
-              "analyzer": "fscrawler_path",
-              "fielddata": true
+        "file" : {
+          "properties" : {
+            "content_type" : {
+              "type" : "keyword"
+            },
+            "filename" : {
+              "type" : "keyword"
+            },
+            "extension" : {
+              "type" : "keyword"
+            },
+            "filesize" : {
+              "type" : "long"
+            },
+            "indexed_chars" : {
+              "type" : "long"
+            },
+            "indexing_date" : {
+              "type" : "date",
+              "format" : "dateOptionalTime"
+            },
+            "last_modified" : {
+              "type" : "date",
+              "format" : "dateOptionalTime"
+            },
+            "checksum": {
+              "type": "keyword"
+            },
+            "url" : {
+              "type" : "keyword",
+              "index" : false
+            }
+          }
+        },
+        "meta" : {
+          "properties" : {
+            "author" : {
+              "type" : "text"
+            },
+            "date" : {
+              "type" : "date",
+              "format" : "dateOptionalTime"
+            },
+            "keywords" : {
+              "type" : "text"
+            },
+            "title" : {
+              "type" : "text"
+            },
+            "language" : {
+              "type" : "keyword"
+            }
+          }
+        },
+        "path" : {
+          "properties" : {
+            "real" : {
+              "type" : "keyword",
+              "fields": {
+                "tree": {
+                  "type" : "text",
+                  "analyzer": "fscrawler_path",
+                  "fielddata": true
+                }
+              }
+            },
+            "root" : {
+              "type" : "keyword"
+            },
+            "virtual" : {
+              "type" : "keyword",
+              "fields": {
+                "tree": {
+                  "type" : "text",
+                  "analyzer": "fscrawler_path",
+                  "fielddata": true
+                }
+              }
             }
           }
         }
@@ -1344,26 +1357,7 @@ Note that if you want to push manually the mapping to elasticsearch you can use 
 # Create index (don't forget to add the fscrawler_path analyzer)
 PUT docs
 {
-  "settings": {
-    "analysis": {
-      "analyzer": {
-        "fscrawler_path": {
-          "tokenizer": "fscrawler_path"
-        }
-      },
-      "tokenizer": {
-        "fscrawler_path": {
-          "type": "path_hierarchy"
-        }
-      }
-    }
-  }
-}
-
-# Create the mapping
-PUT docs/doc/_mapping
-{
-  // Same mapping as previously seen
+  // Same index settings as previously seen
 }
 ```
 
@@ -1375,18 +1369,17 @@ running version `5.x`.
 If you create the following files, they will be picked up at job start time instead of the
 [default ones](#autogenerated-mapping):
 
-* `~/.fscrawler/{job_name}/_mappings/5/doc.json`
-* `~/.fscrawler/{job_name}/_mappings/5/folder.json`
-* `~/.fscrawler/{job_name}/_mappings/5/_settings.json`
+* `~/.fscrawler/{job_name}/_mappings/5/_settings_doc.json`
+* `~/.fscrawler/{job_name}/_mappings/5/_settings_folder.json`
 
 You can do the same for other elasticsearch versions with:
 
-* `~/.fscrawler/{job_name}/_mappings/1/doc.json` for 1.x series
-* `~/.fscrawler/{job_name}/_mappings/1/folder.json` for 1.x series
-* `~/.fscrawler/{job_name}/_mappings/1/_settings.json` for 1.x series
-* `~/.fscrawler/{job_name}/_mappings/2/doc.json` for 2.x series
-* `~/.fscrawler/{job_name}/_mappings/2/folder.json` for 2.x series
-* `~/.fscrawler/{job_name}/_mappings/2/_settings.json` for 1.x series
+* `~/.fscrawler/{job_name}/_mappings/1/_settings_doc.json` for 1.x series
+* `~/.fscrawler/{job_name}/_mappings/1/_settings_folder.json` for 1.x series
+* `~/.fscrawler/{job_name}/_mappings/2/_settings_doc.json` for 2.x series
+* `~/.fscrawler/{job_name}/_mappings/2/_settings_folder.json` for 2.x series
+* `~/.fscrawler/{job_name}/_mappings/6/_settings_doc.json` for 6.x series
+* `~/.fscrawler/{job_name}/_mappings/6/_settings_folder.json` for 6.x series
 
 
 ##### Replace existing mapping

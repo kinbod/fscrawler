@@ -86,7 +86,7 @@ public class FsCopyResourcesTest extends AbstractFSCrawlerTestCase {
         // "6" for elasticsearch version 6
         assertThat(dirCounter.get(), is(6));
 
-        // We have 3 files that must be copied per version: folder.json, doc.json and _settings.json
-        assertThat(fileCounter.get(), is(12));
+        // We have 2 files that must be copied per version: _settings_folder.json and _settings_doc.json
+        assertThat(fileCounter.get(), is(8));
     }
 }

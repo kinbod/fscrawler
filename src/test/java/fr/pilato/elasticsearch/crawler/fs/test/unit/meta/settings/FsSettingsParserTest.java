@@ -68,7 +68,7 @@ public class FsSettingsParserTest extends AbstractFSCrawlerTestCase {
             .setPassword("changeme")
             .setBulkSize(1000)
             .setFlushInterval(TimeValue.timeValueSeconds(5))
-            .setIndex("docs")
+            .setIndexDoc("docs")
             .build();
     private static final Server SERVER_EMPTY = Server.builder().build();
     private static final Server SERVER_FULL = Server.builder()

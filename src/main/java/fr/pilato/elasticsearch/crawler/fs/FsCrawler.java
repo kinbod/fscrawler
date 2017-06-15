@@ -53,6 +53,9 @@ import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.moveLegacyRe
  */
 public class FsCrawler {
 
+    @Deprecated
+    public static final String INDEX_SETTINGS_FILE = "_settings";
+
     private static final long CLOSE_POLLING_WAIT_MS = 100;
 
     private static final Logger logger = LogManager.getLogger(FsCrawler.class);
@@ -97,6 +100,7 @@ public class FsCrawler {
     }
 
 
+    @SuppressWarnings("deprecation")
     public static void main(String[] args) throws Exception {
         // create a scanner so we can read the command-line input
         Scanner scanner = new Scanner(System.in);
@@ -256,6 +260,15 @@ public class FsCrawler {
                     }
                 }
             } else {
+                Path jobMappingDir = configDir.resolve(fsSettings.getName()).resolve("_mappings");
+                String elasticsearchVersion = fsCrawler.getEsClientManager().client().findVersion();
+                try {
+                    // If we are able to read an old configuration file, we should tell the user to check the documentation
+                    FsCrawlerUtil.readJsonFile(jobMappingDir, configDir, elasticsearchVersion, INDEX_SETTINGS_FILE);
+                    logger.warn("We found old configuration index settings in [{}] or [{}]. You should look at the documentation" +
+                            " about upgrades: https://github.com/dadoonet/fscrawler#upgrade-to-23", configDir, jobMappingDir);
+                } catch (NoSuchFileException ignored) { }
+
                 fsCrawler.start();
                 // We just have to wait until the process is stopped
                 while (!fsCrawler.isClosed()) {

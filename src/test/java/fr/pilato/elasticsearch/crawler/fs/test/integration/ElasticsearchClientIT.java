@@ -68,7 +68,7 @@ public class ElasticsearchClientIT extends AbstractITCase {
                 "    \"number_of_shards\": 1,\n" +
                 "    \"number_of_replicas\": 1\n" +
                 "  }\n" +
-                "}", null);
+                "}");
         boolean exists = elasticsearchClient.isExistingIndex(getCrawlerName());
         assertThat(exists, is(true));
     }
@@ -93,38 +93,40 @@ public class ElasticsearchClientIT extends AbstractITCase {
 
     @Test
     public void testSearch() throws IOException {
-        // Depending on the version we are using, we need to adapt the test mapping
+        // Depending on the version we are using, we need to adapt the test settings (mapping)
         String version = elasticsearchClient.findVersion();
 
-        String mapping;
+        String settings;
         // With elasticsearch 5.0.0, we need to use `type: text` instead of `type: string`
         if (new VersionComparator().compare(version, "5") >= 0) {
-            mapping = "{\n" +
-                    "      \"doc\" : {\n" +
-                    "        \"properties\" : {\n" +
-                    "          \"foo\" : {\n" +
-                    "            \"type\" : \"text\",\n" +
-                    "            \"store\" : true\n" +
-                    "            }\n" +
-                    "          }\n" +
+            settings = "{\n" +
+                    "  \"mappings\": {\n" +
+                    "    \"doc\": {\n" +
+                    "      \"properties\": {\n" +
+                    "        \"foo\": {\n" +
+                    "          \"type\": \"text\",\n" +
+                    "          \"store\": true\n" +
                     "        }\n" +
                     "      }\n" +
-                    "    }";
+                    "    }\n" +
+                    "  }\n" +
+                    "}\n";
         } else {
-            mapping = "{\n" +
-                    "      \"doc\" : {\n" +
-                    "        \"properties\" : {\n" +
-                    "          \"foo\" : {\n" +
-                    "            \"type\" : \"string\",\n" +
-                    "            \"store\" : true\n" +
-                    "            }\n" +
-                    "          }\n" +
+            settings = "{\n" +
+                    "  \"mappings\": {\n" +
+                    "    \"doc\": {\n" +
+                    "      \"properties\": {\n" +
+                    "        \"foo\": {\n" +
+                    "          \"type\": \"string\",\n" +
+                    "          \"store\": true\n" +
                     "        }\n" +
                     "      }\n" +
-                    "    }";
+                    "    }\n" +
+                    "  }\n" +
+                    "}\n";
         }
 
-        elasticsearchClient.createIndex(getCrawlerName(), false, null, mapping);
+        elasticsearchClient.createIndex(getCrawlerName(), false, settings);
         elasticsearchClient.waitForHealthyIndex(getCrawlerName());
 
         elasticsearchClient.index(getCrawlerName(), "1", "{ \"foo\" : \"bar\" }");

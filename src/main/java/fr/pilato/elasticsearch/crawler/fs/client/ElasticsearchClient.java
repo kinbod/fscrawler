@@ -91,10 +91,10 @@ public class ElasticsearchClient {
     }
 
     public void createIndex(String index) throws IOException {
-        createIndex(index, false, null, null);
+        createIndex(index, false, null);
     }
 
-    public void createIndex(String index, boolean ignoreErrors, String indexSettings, String mapping) throws IOException {
+    public void createIndex(String index, boolean ignoreErrors, String indexSettings) throws IOException {
         logger.debug("create index [{}]", index);
         logger.trace("index settings: [{}]", indexSettings);
         try {
@@ -104,13 +104,6 @@ public class ElasticsearchClient {
             }
             Response response = client.performRequest("PUT", "/" + index, Collections.emptyMap(), entity);
             logger.trace("create index response: {}", JsonUtil.asMap(response));
-
-            if (!Strings.isNullOrEmpty(mapping)) {
-                logger.debug("put mapping [{}/doc]", index);
-                entity = new StringEntity(mapping, ContentType.APPLICATION_JSON);
-                Response restResponse = client.performRequest("PUT", "/" + index + "/_mapping/doc", Collections.emptyMap(), entity);
-                logger.trace("put mapping response: {}", JsonUtil.asMap(restResponse));
-            }
         } catch (ResponseException e) {
             if (e.getResponse().getStatusLine().getStatusCode() == 400 &&
                     (e.getMessage().contains("index_already_exists_exception") || // ES 5.x

@@ -55,13 +55,10 @@ import java.util.List;
 import java.util.TimeZone;
 
 public class FsCrawlerUtil extends MetaParser {
-    @Deprecated
-    public static final String INDEX_TYPE_DOC = "doc";
-    @Deprecated
-    public static final String INDEX_TYPE_FOLDER = "folder";
     public static final String INDEX_SUFFIX_DOC = "_doc";
     public static final String INDEX_SUFFIX_FOLDER = "_folder";
-    public static final String INDEX_SETTINGS_FILE = "_settings";
+    public static final String INDEX_SETTINGS_DOC_FILE = "_settings_doc";
+    public static final String INDEX_SETTINGS_FOLDER_FILE = "_settings_folder";
 
     static public final class Dir {
         public static final String NAME = "name";
@@ -280,10 +277,10 @@ public class FsCrawlerUtil extends MetaParser {
 
     private static final String CLASSPATH_RESOURCES_ROOT = "/fr/pilato/elasticsearch/crawler/fs/_default/";
     public static final String[] MAPPING_RESOURCES = {
-            "1/doc.json", "1/folder.json", "1/_settings.json",
-            "2/doc.json", "2/folder.json", "2/_settings.json",
-            "5/doc.json", "5/folder.json", "5/_settings.json",
-            "6/doc.json", "6/folder.json", "6/_settings.json"
+            "1/_settings_doc.json", "1/_settings_folder.json",
+            "2/_settings_doc.json", "2/_settings_folder.json",
+            "5/_settings_doc.json", "5/_settings_folder.json",
+            "6/_settings_doc.json", "6/_settings_folder.json"
     };
 
     /**

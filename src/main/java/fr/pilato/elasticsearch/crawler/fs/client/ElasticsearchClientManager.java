@@ -27,9 +27,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.nio.file.Path;
 
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SETTINGS_FILE;
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_TYPE_DOC;
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_TYPE_FOLDER;
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SETTINGS_DOC_FILE;
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SETTINGS_FOLDER_FILE;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.extractMajorVersionNumber;
 
 public class ElasticsearchClientManager {
@@ -91,36 +90,27 @@ public class ElasticsearchClientManager {
         elasticsearchVersion = extractMajorVersionNumber(version);
 
         // If needed, we create the new settings for this files index
-        boolean pushMapping =
-                settings.getFs().isAddAsInnerObject() == false || (!settings.getFs().isJsonSupport() && !settings.getFs().isXmlSupport());
-        createIndex(jobMappingDir, elasticsearchVersion, INDEX_TYPE_DOC, settings.getElasticsearch().getIndexDoc(), pushMapping);
+        if (settings.getFs().isAddAsInnerObject() == false || (!settings.getFs().isJsonSupport() && !settings.getFs().isXmlSupport())) {
+            createIndex(jobMappingDir, elasticsearchVersion, INDEX_SETTINGS_DOC_FILE, settings.getElasticsearch().getIndexDoc());
+        } else {
+            client.createIndex(settings.getElasticsearch().getIndexDoc(), true, null);
+        }
 
         // If needed, we create the new settings for this folder index
-        pushMapping = settings.getFs().isIndexFolders();
-        createIndex(jobMappingDir, elasticsearchVersion, INDEX_TYPE_FOLDER, settings.getElasticsearch().getIndexFolder(), pushMapping);
+        if (settings.getFs().isIndexFolders()) {
+            createIndex(jobMappingDir, elasticsearchVersion, INDEX_SETTINGS_FOLDER_FILE, settings.getElasticsearch().getIndexFolder());
+        } else {
+            client.createIndex(settings.getElasticsearch().getIndexFolder(), true, null);
+        }
     }
 
-    private void createIndex(Path jobMappingDir, String elasticsearchVersion, String deprecatedType, String indexName, boolean pushMapping) throws Exception {
+    private void createIndex(Path jobMappingDir, String elasticsearchVersion, String indexSettingsFile, String indexName) throws Exception {
         try {
             // If needed, we create the new settings for this files index
-            // Read index settings from resources. We try first to read specific settings file per type of index
-            String indexSettings;
-            try {
-                // TODO Add support for files like _settings_doc.json and _settings_folder.json
-                indexSettings = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, INDEX_SETTINGS_FILE + "_" + deprecatedType);
-            } catch (IllegalArgumentException e) {
-                // TODO remove that. It's here only to keep some kind of backward compatibility
-                indexSettings = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, INDEX_SETTINGS_FILE);
-            }
-            String mapping = null;
+            String indexSettings =
+                    FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, indexSettingsFile);
 
-            // If needed, we create the new mapping for it
-            if (pushMapping) {
-                // Read file mapping from resources
-                mapping = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, deprecatedType);
-            }
-
-            client.createIndex(indexName, true, indexSettings, mapping);
+            client.createIndex(indexName, true, indexSettings);
         } catch (Exception e) {
             logger.warn("failed to create index [{}], disabling crawler...", indexName);
             throw e;
