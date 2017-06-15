@@ -164,6 +164,10 @@ a loooong time.
 Also please be aware that reindex API is only available from elasticsearch 2.3. If you are running an older version
 you need first to upgrade elasticsearch.
 
+* As seen in the previous point, we now have 2 indices instead of a single one. Which means that `elasticsearch.index`
+setting has been removed to `elasticsearch.index_doc` and `elasticsearch.index_folder`. By default, it's set to the
+crawler name plus `_doc` and `_folder`. Note that the `upgrade` feature performs that change for you.
+
 # User Guide
 
 ## Getting Started
@@ -314,7 +318,7 @@ for the created document, like:
 {
   "ok" : true,
   "filename" : "test.txt",
-  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
+  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
 }
 ```
 
@@ -348,6 +352,8 @@ It means that if you stop the job at some point, FS crawler will restart it from
 
 FS crawler will also store default mappings and index settings for elasticsearch in `~/.fscrawler/_default/_mappings`:
 
+TODO CHANGE THAT
+
 * `1/doc.json`: for elasticsearch 1.x series document mapping
 * `1/folder.json`: for elasticsearch 1.x series folder mapping
 * `1/_settings.json`: for elasticsearch 1.x series index settings
@@ -357,6 +363,8 @@ FS crawler will also store default mappings and index settings for elasticsearch
 * `5/doc.json`: for elasticsearch 5.x series document mapping
 * `5/folder.json`: for elasticsearch 5.x series folder mapping
 * `5/_settings.json`: for elasticsearch 5.x series index settings
+* `6/folder.json`: for elasticsearch 6.x series folder mapping
+* `6/_settings.json`: for elasticsearch 6.x series index settings
 
 Read [Mapping](#mapping) for more information.
 
@@ -449,8 +457,8 @@ The job file must comply to the following `json` specifications:
       "port" : 9200,
       "scheme" : "HTTP"
     } ],
-    "index" : "docs",
-    "type" : "doc",
+    "index_doc" : "docs",
+    "index_folder" : "folders",
     "bulk_size" : 100,
     "flush_interval" : "5s",
     "username" : "username",
@@ -487,8 +495,8 @@ You can define the most simple crawler job by writing a `~/.fscrawler/test/_sett
 }
 ```
 
-This will scan every 15 minutes all documents available in `/tmp/es` dir and will index them into `test` index with
-`doc` type. It will connect to an elasticsearch cluster running on `127.0.0.1`, port `9200`.
+This will scan every 15 minutes all documents available in `/tmp/es` dir and will index them into `test_doc` index.
+It will connect to an elasticsearch cluster running on `127.0.0.1`, port `9200`.
 
 **Note**: `name` is a mandatory field.
 
@@ -676,8 +684,8 @@ If you have more than one type, create as many crawlers as types:
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type1"
+    "index_doc": "mydocs1",
+    "index_folder": "myfolders1"
   }
 }
 ```
@@ -692,8 +700,8 @@ If you have more than one type, create as many crawlers as types:
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type2"
+    "index_doc": "mydocs2",
+    "index_folder": "myfolders2"
   }
 }
 ```
@@ -708,8 +716,8 @@ If you have more than one type, create as many crawlers as types:
 	"xml_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type3"
+    "index_doc": "mydocs3",
+    "index_folder": "myfolders3"
   }
 }
 ```
@@ -730,8 +738,8 @@ You can also index many types from one single dir using two crawlers scanning th
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type1"
+    "index_doc": "mydocs1",
+    "index_folder": "myfolders1"
   }
 }
 ```
@@ -747,8 +755,8 @@ You can also index many types from one single dir using two crawlers scanning th
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type2"
+    "index_doc": "mydocs2",
+    "index_folder": "myfolders2"
   }
 }
 ```
@@ -764,8 +772,8 @@ You can also index many types from one single dir using two crawlers scanning th
 	"xml_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type3"
+    "index_doc": "mydocs3",
+    "index_folder": "myfolders3"
   }
 }
 ```
@@ -1158,8 +1166,8 @@ Here is a list of Elasticsearch settings (under `elasticsearch.` prefix)`:
 
 |               Name               |    Default value     |                                 Documentation                                     |
 |----------------------------------|----------------------|-----------------------------------------------------------------------------------|
-| `elasticsearch.index`            | job name             | Index name. See [Index settings](#index-settings)                                 |
-| `elasticsearch.type`             | `"doc"`              | Type name. See [Type name and mapping](#type-name-and-mapping)                    |
+| `elasticsearch.index_doc`        | job name + _doc      | Index name for docs. See [Index settings](#index-settings)                        |
+| `elasticsearch.index_folder`     | job name + _folder   | Index name for folders. See [Index settings](#index-settings)                     |
 | `elasticsearch.bulk_size`        | `100`                | [Bulk settings](#bulk-settings)                                                   |
 | `elasticsearch.flush_interval`   | `"5s"`               | [Bulk settings](#bulk-settings)                                                   |
 | `elasticsearch.pipeline`         | `null`               | [Using Ingest Node Pipeline](#using-ingest-node-pipeline) (from 2.2)              |
@@ -1169,17 +1177,19 @@ Here is a list of Elasticsearch settings (under `elasticsearch.` prefix)`:
 
 #### Index settings
 
-By default, FS crawler will index your data in an index which name is the same as the crawler name (`name` property).
-You can change it by setting `index` field:
+By default, FS crawler will index your data in an index which name is the same as the crawler name (`name` property)
+plus `_doc` suffix, like `test_doc`. You can change it by setting `index_doc` field:
 
 ```json
 {
   "name" : "test",
   "elasticsearch" : {
-    "index" : "docs"
+    "index_doc" : "docs"
   }
 }
 ```
+
+TODO change that
 
 When FS crawler needs to create the index, it applies some default settings which are read from
 `~/.fscrawler/_default/5/_settings.json`. You can read its content from
@@ -1188,29 +1198,25 @@ When FS crawler needs to create the index, it applies some default settings whic
 Settings define an analyzer named `fscrawler_path` which uses a
 [path hierarchy tokenizer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-pathhierarchy-tokenizer.html).
 
-
-#### Type name and mapping
-
-By default, FS crawler will index your data using `doc` as the type name.
-You can change it by setting `type` field:
+FS crawler will also index folders in an index which name is the same as the crawler name (`name` property)
+plus `_folder` suffix, like `test_folder`. You can change it by setting `index_folder` field:
 
 ```json
 {
-  "name" : "test",
-  "elasticsearch" : {
-    "type" : "mydocument"
-  }
+ "name" : "test",
+ "elasticsearch" : {
+   "index_folder" : "folders"
+ }
 }
 ```
 
-When the FS crawler detects a new type, it creates automatically a mapping for this type.
-The default mapping is read from `~/.fscrawler/_default/5/doc.json` which you can read from
-[the source](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/doc.json).
+FS crawler applies as well a mapping automatically which is read from `~/.fscrawler/_default/5/doc.json`.
+[Source here](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/doc.json).
 
 You can also display the index mapping being used with Kibana
 
 ```
-GET docs/doc/_mapping
+GET docs/_mapping
 ```
 
 or fall back to the command line
@@ -1390,25 +1396,6 @@ Therefore, you'll need first to remove existing index, which means remove all ex
 with the new mapping.
 
 You might to try [elasticsearch Reindex API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html) though.
-
-##### Upgrading an existing mapping
-
-It could happen that you would like to add new sub fields or are upgrading from a previous version of FS crawler
-which requires that you upgrade the mapping before sending the first documents.
-
-The `--upgrade_mapping` option will help you.
-
-The following command will upgrade the mappings related to the `job_name` job and then will run normally:
-
-```sh
-bin/fscrawler job_name --upgrade_mapping
-```
-
-If you just want to upgrade the mapping without launching the job itself, you can use the [loop](#crawler-options) option:
-
-```sh
-bin/fscrawler job_name --upgrade_mapping --loop 0
-```
 
 
 #### Bulk settings
@@ -1619,7 +1606,7 @@ Here is a typical JSON document generated by the crawler:
 You can use the content field to perform full-text search on
 
 ```
-GET docs/doc/_search
+GET docs/_search
 {
   "query" : {
     "match" : {
@@ -1632,7 +1619,7 @@ GET docs/doc/_search
 You can use meta fields to perform search on.
 
 ```
-GET docs/doc/_search
+GET docs/_search
 {
   "query" : {
     "term" : {
@@ -1645,7 +1632,7 @@ GET docs/doc/_search
 Or run some aggregations on top of them, like:
 
 ```
-GET docs/doc/_search
+GET docs/_search
 {
   "size": 0,
   "aggs": {
@@ -1701,8 +1688,8 @@ It will give you a response similar to:
         "port" : 9200,
         "scheme" : "HTTP"
       } ],
-      "index" : "fscrawler-rest-tests",
-      "type" : "doc",
+      "index_doc" : "fscrawler-rest-tests_doc",
+      "index_folder" : "fscrawler-rest-tests_folder",
       "bulk_size" : 100,
       "flush_interval" : "5s",
       "username" : "elastic"
@@ -1732,7 +1719,7 @@ It will give you a response similar to:
 {
   "ok" : true,
   "filename" : "test.txt",
-  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
+  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
 }
 ```
 
@@ -1740,14 +1727,14 @@ The `url` represents the elasticsearch address of the indexed document.
 If you call:
 
 ```sh
-curl http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534?pretty
+curl http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534?pretty
 ```
 
 You will get back your document as it has been stored by elasticsearch:
 
 ```json
 {
-  "_index" : "fscrawler-rest-tests",
+  "_index" : "fscrawler-rest-tests_doc",
   "_type" : "doc",
   "_id" : "dd18bf3a8ea2a3e53e2661c7fb53534",
   "_version" : 1,
@@ -1790,7 +1777,7 @@ will give
 {
   "ok" : true,
   "filename" : "test.txt",
-  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534",
+  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534",
   "doc" : {
     "content" : "This file contains some words.\n",
     "meta" : {
@@ -1956,6 +1943,8 @@ bin/elasticsearch -Des.http.port=9400 -Des.network.host=127.0.0.1
 bin/elasticsearch -Des.http.port=9400
 # elasticsearch 5.x
 bin/elasticsearch -Ehttp.port=9400
+# elasticsearch 6.x
+bin/elasticsearch -Ehttp.port=9400
 ```
 
 Integration tests will detect the running instance and will not ignore anymore those tests.
@@ -1963,9 +1952,10 @@ Integration tests will detect the running instance and will not ignore anymore t
 You can also tell maven to run integration tests by deploying another version of elasticsearch:
 
 ```sh
-# For elasticsearch 1.x series
-mvn install -Pes-1x
+# For elasticsearch 2.x series
 mvn install -Pes-2x
+# For elasticsearch 6.x series
+mvn install -Pes-6x
 ```
 
 By default, it will run integration tests against elasticsearch 5.x series cluster.
@@ -2080,9 +2070,9 @@ The release script will:
 * Create a release branch
 * Replace SNAPSHOT version by the final version number
 * Commit the change
-* Run tests against elasticsearch 1.x series
 * Run tests against elasticsearch 2.x series
 * Run tests against elasticsearch 5.x series
+* Run tests against elasticsearch 6.x series
 * Build the final artifacts using release profile (signing artifacts and generating all needed files)
 * Tag the version
 * Prepare the announcement email

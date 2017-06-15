@@ -26,16 +26,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_DOC;
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_FOLDER;
+
 public class Elasticsearch {
 
     public Elasticsearch() {
 
     }
 
-    private Elasticsearch(List<Node> nodes, String index, int bulkSize, TimeValue flushInterval,
-                          String username, String password, String pipeline) {
+    private Elasticsearch(List<Node> nodes, String indexDoc, String indexFolder, int bulkSize,
+                          TimeValue flushInterval, String username, String password, String pipeline) {
         this.nodes = nodes;
-        this.index = index;
+        this.indexDoc = indexDoc;
+        this.indexFolder = indexFolder;
         this.bulkSize = bulkSize;
         this.flushInterval = flushInterval;
         this.username = username;
@@ -180,7 +184,10 @@ public class Elasticsearch {
     }
 
     private List<Node> nodes;
+    @Deprecated
     private String index;
+    private String indexDoc;
+    private String indexFolder;
     private int bulkSize = 100;
     private TimeValue flushInterval = TimeValue.timeValueSeconds(5);
     private String username;
@@ -192,12 +199,30 @@ public class Elasticsearch {
         return nodes;
     }
 
+    @Deprecated
     public String getIndex() {
         return index;
     }
 
+    @Deprecated
     public void setIndex(String index) {
         this.index = index;
+    }
+
+    public String getIndexDoc() {
+        return indexDoc;
+    }
+
+    public void setIndexDoc(String indexDoc) {
+        this.indexDoc = indexDoc;
+    }
+
+    public String getIndexFolder() {
+        return indexFolder;
+    }
+
+    public void setIndexFolder(String indexFolder) {
+        this.indexFolder = indexFolder;
     }
 
     public int getBulkSize() {
@@ -236,7 +261,8 @@ public class Elasticsearch {
 
     public static class Builder {
         private List<Node> nodes;
-        private String index;
+        private String indexDoc;
+        private String indexFolder;
         private int bulkSize = 100;
         private TimeValue flushInterval = TimeValue.timeValueSeconds(5);
         private String username = null;
@@ -256,8 +282,20 @@ public class Elasticsearch {
             return this;
         }
 
+        @Deprecated
         public Builder setIndex(String index) {
-            this.index = index;
+            this.indexDoc = index + INDEX_SUFFIX_DOC;
+            this.indexFolder = index + INDEX_SUFFIX_FOLDER;
+            return this;
+        }
+
+        public Builder setIndexDoc(String indexDoc) {
+            this.indexDoc = indexDoc;
+            return this;
+        }
+
+        public Builder setIndexFolder(String indexFolder) {
+            this.indexFolder = indexFolder;
             return this;
         }
 
@@ -287,7 +325,7 @@ public class Elasticsearch {
         }
 
         public Elasticsearch build() {
-            return new Elasticsearch(nodes, index, bulkSize, flushInterval, username, password, pipeline);
+            return new Elasticsearch(nodes, indexDoc, indexFolder, bulkSize, flushInterval, username, password, pipeline);
         }
     }
 
@@ -300,7 +338,8 @@ public class Elasticsearch {
 
         if (bulkSize != that.bulkSize) return false;
         if (nodes != null ? !nodes.equals(that.nodes) : that.nodes != null) return false;
-        if (index != null ? !index.equals(that.index) : that.index != null) return false;
+        if (indexDoc != null ? !indexDoc.equals(that.indexDoc) : that.indexDoc != null) return false;
+        if (indexFolder != null ? !indexFolder.equals(that.indexFolder) : that.indexFolder != null) return false;
         if (username != null ? !username.equals(that.username) : that.username != null) return false;
         // We can't really test the password as it may be obfuscated
         if (pipeline != null ? !pipeline.equals(that.pipeline) : that.pipeline != null) return false;
@@ -311,7 +350,8 @@ public class Elasticsearch {
     @Override
     public int hashCode() {
         int result = nodes != null ? nodes.hashCode() : 0;
-        result = 31 * result + (index != null ? index.hashCode() : 0);
+        result = 31 * result + (indexDoc != null ? indexDoc.hashCode() : 0);
+        result = 31 * result + (indexFolder != null ? indexFolder.hashCode() : 0);
         result = 31 * result + (username != null ? username.hashCode() : 0);
         result = 31 * result + (password != null ? password.hashCode() : 0);
         result = 31 * result + (pipeline != null ? pipeline.hashCode() : 0);

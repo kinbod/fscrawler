@@ -165,7 +165,11 @@ public class FsCrawlerImplAllParametersIT extends AbstractITCase {
     }
 
     private Elasticsearch endCrawlerDefinition(String indexName) {
-        return generateElasticsearchConfig(indexName, securityInstalled, 1, null);
+        return endCrawlerDefinition(indexName + INDEX_SUFFIX_DOC, indexName + INDEX_SUFFIX_FOLDER);
+    }
+
+    private Elasticsearch endCrawlerDefinition(String indexDocName, String indexFolderName) {
+        return generateElasticsearchConfig(indexDocName, indexFolderName, securityInstalled, 1, null);
     }
 
     private void startCrawler() throws Exception {
@@ -884,7 +888,8 @@ public class FsCrawlerImplAllParametersIT extends AbstractITCase {
     public void test_bulk_flush() throws Exception {
         Fs fs = startCrawlerDefinition().build();
         startCrawler(getCrawlerName(), fs,
-                generateElasticsearchConfig(getCrawlerName(), securityInstalled, 100, TimeValue.timeValueSeconds(2)), null);
+                generateElasticsearchConfig(getCrawlerName() + INDEX_SUFFIX_DOC, getCrawlerName() + INDEX_SUFFIX_FOLDER,
+                        securityInstalled, 100, TimeValue.timeValueSeconds(2)), null);
 
         countTestHelper(getCrawlerName() + INDEX_SUFFIX_DOC, null, 1);
     }
@@ -1326,10 +1331,10 @@ public class FsCrawlerImplAllParametersIT extends AbstractITCase {
         elasticsearchClient.refresh(getCrawlerName());
 
         // Let's create a crawler instance
-        crawler = new FsCrawlerImpl(
-                metadataDir,
-                FsSettings.builder(getCrawlerName())
-                        .setElasticsearch(securityInstalled ? elasticsearchWithSecurity : elasticsearch).build(), 0, false);
+        FsSettings fsSettings = FsSettings.builder(getCrawlerName())
+                .setElasticsearch(securityInstalled ? elasticsearchWithSecurity : elasticsearch).build();
+        fsSettings.getElasticsearch().setIndex(getCrawlerName());
+        crawler = new FsCrawlerImpl(metadataDir, fsSettings, 0, false);
 
         // Call the upgrade process
         crawler.upgrade();

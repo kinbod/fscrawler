@@ -44,7 +44,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_DOC;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.buildUrl;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.localDateTimeToDate;
 
@@ -109,13 +108,12 @@ public class UploadApi extends RestApi {
             logger.debug("Simulate mode is on, so we skip sending document [{}] to elasticsearch.", filename);
         } else {
             logger.debug("Sending document [{}] to elasticsearch.", filename);
-            bulkProcessor.add(new IndexRequest(settings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC, "doc", id)
-                    .source(DocParser.toJson(doc)));
+            bulkProcessor.add(new IndexRequest(settings.getElasticsearch().getIndexDoc(), "doc", id).source(DocParser.toJson(doc)));
             // Elasticsearch entity coordinates (we use the first node address)
             Elasticsearch.Node node = settings.getElasticsearch().getNodes().get(0);
             url = buildUrl(
                     node.getScheme().toLowerCase(), node.getHost(), node.getPort()) + "/" +
-                    settings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC + "/" +
+                    settings.getElasticsearch().getIndexDoc() + "/" +
                     "doc" + "/" +
                     id;
         }

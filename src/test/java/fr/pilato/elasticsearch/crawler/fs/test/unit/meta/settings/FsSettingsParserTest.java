@@ -112,7 +112,8 @@ public class FsSettingsParserTest extends AbstractFSCrawlerTestCase {
         assertThat(settings.getElasticsearch(), notNullValue());
         assertThat(settings.getElasticsearch().getBulkSize(), is(100));
         assertThat(settings.getElasticsearch().getFlushInterval(), is(TimeValue.timeValueSeconds(5)));
-        assertThat(settings.getElasticsearch().getIndex(), is("test"));
+        assertThat(settings.getElasticsearch().getIndexDoc(), is("test_doc"));
+        assertThat(settings.getElasticsearch().getIndexFolder(), is("test_folder"));
         assertThat(settings.getElasticsearch().getNodes(), iterableWithSize(1));
         assertThat(settings.getElasticsearch().getNodes().get(0).getHost(), is("127.0.0.1"));
         assertThat(settings.getElasticsearch().getNodes().get(0).getPort(), is(9200));

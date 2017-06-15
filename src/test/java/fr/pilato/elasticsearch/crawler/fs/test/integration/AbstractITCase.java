@@ -201,15 +201,18 @@ public abstract class AbstractITCase extends AbstractFSCrawlerTestCase {
 
     private static final String testCrawlerPrefix = "fscrawler_";
 
-    protected static Elasticsearch generateElasticsearchConfig(String indexName, boolean securityInstalled, int bulkSize,
-                                                               TimeValue timeValue) {
+    static Elasticsearch generateElasticsearchConfig(String indexDocName, String indexFolderName, boolean securityInstalled, int bulkSize,
+                                                     TimeValue timeValue) {
         Elasticsearch.Builder builder = Elasticsearch.builder()
                 .addNode(Elasticsearch.Node.builder().setHost(testClusterHost).setPort(testClusterPort).setScheme(testClusterScheme).build())
                 .setBulkSize(bulkSize)
                 .setFlushInterval(timeValue);
 
-        if (indexName != null) {
-            builder.setIndex(indexName);
+        if (indexDocName != null) {
+            builder.setIndexDoc(indexDocName);
+        }
+        if (indexFolderName != null) {
+            builder.setIndexFolder(indexFolderName);
         }
 
         if (timeValue != null) {

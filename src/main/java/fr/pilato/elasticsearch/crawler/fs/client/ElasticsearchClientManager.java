@@ -66,7 +66,7 @@ public class ElasticsearchClientManager {
             // We set what will be elasticsearch behavior as it depends on the cluster version
             client.setElasticsearchBehavior();
         } catch (Exception e) {
-            logger.warn("failed to create index [{}], disabling crawler...", settings.getElasticsearch().getIndex());
+            logger.warn("failed to create elasticsearch client, disabling crawler...");
             throw e;
         }
 
@@ -93,19 +93,20 @@ public class ElasticsearchClientManager {
         // If needed, we create the new settings for this files index
         boolean pushMapping =
                 settings.getFs().isAddAsInnerObject() == false || (!settings.getFs().isJsonSupport() && !settings.getFs().isXmlSupport());
-        createIndex(jobMappingDir, elasticsearchVersion, INDEX_TYPE_DOC, pushMapping);
+        createIndex(jobMappingDir, elasticsearchVersion, INDEX_TYPE_DOC, settings.getElasticsearch().getIndexDoc(), pushMapping);
 
         // If needed, we create the new settings for this folder index
         pushMapping = settings.getFs().isIndexFolders();
-        createIndex(jobMappingDir, elasticsearchVersion, INDEX_TYPE_FOLDER, pushMapping);
+        createIndex(jobMappingDir, elasticsearchVersion, INDEX_TYPE_FOLDER, settings.getElasticsearch().getIndexFolder(), pushMapping);
     }
 
-    private void createIndex(Path jobMappingDir, String elasticsearchVersion, String deprecatedType, boolean pushMapping) throws Exception {
+    private void createIndex(Path jobMappingDir, String elasticsearchVersion, String deprecatedType, String indexName, boolean pushMapping) throws Exception {
         try {
             // If needed, we create the new settings for this files index
             // Read index settings from resources. We try first to read specific settings file per type of index
             String indexSettings;
             try {
+                // TODO Add support for files like _settings_doc.json and _settings_folder.json
                 indexSettings = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, INDEX_SETTINGS_FILE + "_" + deprecatedType);
             } catch (IllegalArgumentException e) {
                 // TODO remove that. It's here only to keep some kind of backward compatibility
@@ -119,9 +120,9 @@ public class ElasticsearchClientManager {
                 mapping = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, deprecatedType);
             }
 
-            client.createIndex(settings.getElasticsearch().getIndex() + "_" + deprecatedType, true, indexSettings, mapping);
+            client.createIndex(indexName, true, indexSettings, mapping);
         } catch (Exception e) {
-            logger.warn("failed to create index [{}], disabling crawler...", settings.getElasticsearch().getIndex());
+            logger.warn("failed to create index [{}], disabling crawler...", indexName);
             throw e;
         }
     }

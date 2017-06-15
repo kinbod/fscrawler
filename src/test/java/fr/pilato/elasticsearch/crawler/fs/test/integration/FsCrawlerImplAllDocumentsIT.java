@@ -84,8 +84,8 @@ public class FsCrawlerImplAllDocumentsIT extends AbstractITCase {
 
         crawler = new FsCrawlerImpl(metadataDir,
                 FsSettings.builder("fscrawler_test_all_documents")
-                        .setElasticsearch(generateElasticsearchConfig("fscrawler_test_all_documents", securityInstalled, 5,
-                                TimeValue.timeValueSeconds(1)))
+                        .setElasticsearch(generateElasticsearchConfig("fscrawler_test_all_documents_doc", "fscrawler_test_all_documents_folder",
+                                securityInstalled, 5, TimeValue.timeValueSeconds(1)))
                         .setFs(Fs.builder()
                                 .setUrl(testResourceTarget.toString())
                                 .setLangDetect(true)

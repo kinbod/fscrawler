@@ -31,6 +31,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import static fr.pilato.elasticsearch.crawler.fs.FsCrawlerImpl.hasText;
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_DOC;
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_FOLDER;
 
 public class FsCrawlerValidator {
 
@@ -54,9 +56,13 @@ public class FsCrawlerValidator {
         if (settings.getElasticsearch() == null) {
             settings.setElasticsearch(Elasticsearch.DEFAULT());
         }
-        if (settings.getElasticsearch().getIndex() == null) {
+        if (settings.getElasticsearch().getIndexDoc() == null) {
             // When index is not set, we fallback to the config name
-            settings.getElasticsearch().setIndex(settings.getName());
+            settings.getElasticsearch().setIndexDoc(settings.getName() + INDEX_SUFFIX_DOC);
+        }
+        if (settings.getElasticsearch().getIndexFolder() == null) {
+            // When index is not set, we fallback to the config name
+            settings.getElasticsearch().setIndexFolder(settings.getName() + INDEX_SUFFIX_FOLDER);
         }
 
         // Checking protocol

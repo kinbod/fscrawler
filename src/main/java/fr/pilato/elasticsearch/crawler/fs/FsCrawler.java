@@ -238,6 +238,11 @@ public class FsCrawler {
                 logger.info("Upgrading job [{}]", jobName);
                 boolean success = fsCrawler.upgrade();
                 if (success) {
+                    // We can migrate deprecated settings and rewrite the fscrawler setting file
+                    logger.info("Updating fscrawler setting file");
+                    fsSettings.getElasticsearch().setIndex(null);
+                    fsSettingsFileHandler.write(fsSettings);
+
                     // We can propose to remove the old index
                     String yesno = null;
                     while (!"y".equalsIgnoreCase(yesno) && !"n".equalsIgnoreCase(yesno)) {

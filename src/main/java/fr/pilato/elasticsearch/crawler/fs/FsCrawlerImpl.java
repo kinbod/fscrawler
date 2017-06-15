@@ -65,8 +65,6 @@ import java.util.stream.Collectors;
 import static fr.pilato.elasticsearch.crawler.fs.FsCrawlerValidator.validateSettings;
 import static fr.pilato.elasticsearch.crawler.fs.client.ElasticsearchClient.extractFromPath;
 import static fr.pilato.elasticsearch.crawler.fs.tika.TikaDocParser.generate;
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_DOC;
-import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SUFFIX_FOLDER;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_TYPE_DOC;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_TYPE_FOLDER;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.localDateTimeToDate;
@@ -173,43 +171,49 @@ public class FsCrawlerImpl {
         // simply reindex data from index/type1, index/type2 to index_type1, index_type2
         String index = settings.getElasticsearch().getIndex();
 
-        // Check that the old index actually exists
-        if (esClientManager.client().isExistingIndex(index)) {
-            // We check that the new indices don't exist yet or are empty
-            boolean indexExists = esClientManager.client().isExistingIndex(index + INDEX_SUFFIX_DOC) ||
-                    esClientManager.client().isExistingIndex(index + INDEX_SUFFIX_FOLDER);
-            long numberOfDocs = 0;
-            if (indexExists) {
-                SearchResponse responseDoc = esClientManager.client().search(index + INDEX_SUFFIX_DOC, null, 0);
-                SearchResponse responseFolder = esClientManager.client().search(index + INDEX_SUFFIX_FOLDER, null, 0);
-                numberOfDocs = responseDoc.getHits().getTotal() + responseFolder.getHits().getTotal();
-            }
-            if (numberOfDocs > 0) {
-                logger.warn("[{}] or [{}] already exists and are not empty. No upgrade needed.", index + INDEX_SUFFIX_DOC, index + INDEX_SUFFIX_FOLDER);
-            } else {
-                logger.debug("[{}] can be upgraded.", index);
-
-                // Create the new indices with the right mappings (well, we don't read existing user configuration)
-                if (!indexExists) {
-                    esClientManager.createIndices(settings);
-                    logger.info("[{}] and [{}] have been created.", index + INDEX_SUFFIX_DOC, index + INDEX_SUFFIX_FOLDER);
-                }
-
-                // Run reindex task for folders
-                logger.info("Starting reindex folders...");
-                int folders = esClientManager.client().reindex(index, INDEX_TYPE_FOLDER, index + INDEX_SUFFIX_FOLDER);
-                logger.info("Done reindexing [{}] folders...", folders);
-
-                // Run reindex task for docs
-                logger.info("Starting reindex docs...");
-                int docs = esClientManager.client().reindex(index, INDEX_TYPE_DOC, index + INDEX_SUFFIX_DOC);
-                logger.info("Done reindexing [{}] docs...", docs);
-
-                logger.info("You can now upgrade your elasticsearch cluster to >=6.0.0!");
-                return true;
-            }
+        if (index == null) {
+            logger.info("Can not find deprecated index name in fscrawler settings.");
         } else {
-            logger.info("[{}] does not exist. No upgrade needed.", index);
+            // Check that the old index actually exists
+            if (esClientManager.client().isExistingIndex(index)) {
+                // We check that the new indices don't exist yet or are empty
+                String indexDoc = settings.getElasticsearch().getIndexDoc();
+                String indexFolder = settings.getElasticsearch().getIndexFolder();
+                boolean indexExists = esClientManager.client().isExistingIndex(indexDoc) ||
+                        esClientManager.client().isExistingIndex(indexFolder);
+                long numberOfDocs = 0;
+                if (indexExists) {
+                    SearchResponse responseDoc = esClientManager.client().search(indexDoc, null, 0);
+                    SearchResponse responseFolder = esClientManager.client().search(indexFolder, null, 0);
+                    numberOfDocs = responseDoc.getHits().getTotal() + responseFolder.getHits().getTotal();
+                }
+                if (numberOfDocs > 0) {
+                    logger.warn("[{}] or [{}] already exists and are not empty. No upgrade needed.", indexDoc, indexFolder);
+                } else {
+                    logger.debug("[{}] can be upgraded.", index);
+
+                    // Create the new indices with the right mappings (well, we don't read existing user configuration)
+                    if (!indexExists) {
+                        esClientManager.createIndices(settings);
+                        logger.info("[{}] and [{}] have been created.", indexDoc, indexFolder);
+                    }
+
+                    // Run reindex task for folders
+                    logger.info("Starting reindex folders...");
+                    int folders = esClientManager.client().reindex(index, INDEX_TYPE_FOLDER, indexFolder);
+                    logger.info("Done reindexing [{}] folders...", folders);
+
+                    // Run reindex task for docs
+                    logger.info("Starting reindex docs...");
+                    int docs = esClientManager.client().reindex(index, INDEX_TYPE_DOC, indexDoc);
+                    logger.info("Done reindexing [{}] docs...", docs);
+
+                    logger.info("You can now upgrade your elasticsearch cluster to >=6.0.0!");
+                    return true;
+                }
+            } else {
+                logger.info("[{}] does not exist. No upgrade needed.", index);
+            }
         }
 
         return false;
@@ -501,7 +505,7 @@ public class FsCrawlerImpl {
                     if (FsCrawlerUtil.isIndexable(esfile, fsSettings.getFs().getIncludes(), fsSettings.getFs().getExcludes())
                             && !fsFiles.contains(esfile)) {
                         logger.trace("Removing file [{}] in elasticsearch", esfile);
-                        esDelete(fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC, "doc",
+                        esDelete(fsSettings.getElasticsearch().getIndexDoc(), "doc",
                                 generateIdFromFilename(esfile, filepath));
                         stats.removeFile();
                     }
@@ -538,7 +542,7 @@ public class FsCrawlerImpl {
 
             logger.trace("Querying elasticsearch for files in dir [{}:{}]", PATH_ROOT, SignTool.sign(path));
             SearchResponse response = esClientManager.client().search(
-                    fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC,
+                    fsSettings.getElasticsearch().getIndexDoc(),
                     PATH_ROOT + ":" + SignTool.sign(path),
                     REQUEST_SIZE, // TODO: WHAT? DID I REALLY WROTE THAT? :p
                     "_source", FILE_FILENAME
@@ -589,7 +593,7 @@ public class FsCrawlerImpl {
             }
 
             SearchResponse response = esClientManager.client().search(
-                    fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_FOLDER,
+                    fsSettings.getElasticsearch().getIndexFolder(),
                     fr.pilato.elasticsearch.crawler.fs.meta.doc.Path.FIELD_NAMES.ROOT + ":" + SignTool.sign(path),
                     REQUEST_SIZE // TODO: WHAT? DID I REALLY WROTE THAT? :p
             );
@@ -667,20 +671,20 @@ public class FsCrawlerImpl {
                     }
 
                     // We index the data structure
-                    esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC,
+                    esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndexDoc(),
                             "doc",
                             generateIdFromFilename(filename, dirname),
                             doc);
                 } else if (fsSettings.getFs().isIndexContent()) {
                     if (fsSettings.getFs().isJsonSupport()) {
                         // We index the json content directly
-                        esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC,
+                        esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndexDoc(),
                                 "doc",
                                 generateIdFromFilename(filename, dirname),
                                 read(inputStream));
                     } else if (fsSettings.getFs().isXmlSupport()) {
                         // We index the xml content directly
-                        esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC,
+                        esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndexDoc(),
                                 "doc",
                                 generateIdFromFilename(filename, dirname),
                                 XmlDocParser.generate(inputStream));
@@ -711,7 +715,7 @@ public class FsCrawlerImpl {
          * @throws Exception in case of error
          */
         private void indexDirectory(String id, fr.pilato.elasticsearch.crawler.fs.meta.doc.Path path) throws Exception {
-            esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_FOLDER,
+            esIndex(esClientManager.bulkProcessor(), fsSettings.getElasticsearch().getIndexFolder(),
                     "doc",
                     id,
                     path);
@@ -743,7 +747,7 @@ public class FsCrawlerImpl {
 
             for (String esfile : listFile) {
                 esDelete(
-                        fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_DOC,
+                        fsSettings.getElasticsearch().getIndexDoc(),
                         "doc",
                         SignTool.sign(path.concat(File.separator).concat(esfile)));
             }
@@ -753,7 +757,7 @@ public class FsCrawlerImpl {
                 removeEsDirectoryRecursively(esfolder);
             }
 
-            esDelete(fsSettings.getElasticsearch().getIndex() + INDEX_SUFFIX_FOLDER, "doc", SignTool.sign(path));
+            esDelete(fsSettings.getElasticsearch().getIndexFolder(), "doc", SignTool.sign(path));
         }
 
         /**
