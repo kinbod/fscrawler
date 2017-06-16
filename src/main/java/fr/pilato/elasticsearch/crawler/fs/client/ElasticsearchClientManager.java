@@ -59,6 +59,11 @@ public class ElasticsearchClientManager {
     }
 
     public void start() throws Exception {
+        if (client != null) {
+            // The client has already been initialized. Let's skip this again
+            return;
+        }
+
         try {
             // Create an elasticsearch client
             client = new ElasticsearchClient(settings.getElasticsearch());
