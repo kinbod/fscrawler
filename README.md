@@ -7,14 +7,13 @@ It crawls your file system and index new files, update existing ones and removes
 
 You need to install a version matching your Elasticsearch version:
 
-| Elasticsearch |  FS Crawler | Released |                                       Docs                                   |
-|---------------|-------------|----------|------------------------------------------------------------------------------|
-| 1.x, 2.x, 5.x | 2.3-SNAPSHOT|          |See below                                                                     |
-| 1.x, 2.x, 5.x | **2.2**     |2017-02-03|[2.2](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.2/README.md)     |
-| 1.x, 2.x, 5.x | 2.1         |2016-07-26|[2.1](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.1/README.md)     |
-|    es-2.0     | 2.0.0       |2015-10-30|[2.0.0](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.0.0/README.md) |
-
-From FS Crawler 2.1, all elasticsearch versions since 1.0 are supported.
+|    Elasticsearch   |  FS Crawler | Released |                                       Docs                                   |
+|--------------------|-------------|----------|------------------------------------------------------------------------------|
+| 2.x, 5.x, 6.x      | 2.4-SNAPSHOT|          |See below                                                                     |
+| 2.x, 5.x, 6.x      | **2.3**     |2017-07-10|[2.3](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.3/README.md)     |
+| 1.x, 2.x, 5.x      | 2.2         |2017-02-03|[2.2](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.2/README.md)     |
+| 1.x, 2.x, 5.x      | 2.1         |2016-07-26|[2.1](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.1/README.md)     |
+|    es-2.0          | 2.0.0       |2015-10-30|[2.0.0](https://github.com/dadoonet/fscrawler/blob/fscrawler-2.0.0/README.md) |
 
 ## Build Status
 
@@ -42,7 +41,6 @@ Thanks to Travis for the [build status](https://travis-ci.org/dadoonet/fscrawler
         * [Elasticsearch settings](#elasticsearch-settings)
         * [REST service](#rest-service)
 * [Tips and tricks](#tips-and-tricks)
-* [Developing on fscrawler project](#developing-on-fscrawler-project)
 * [License](#license)
 
 # Installation Guide
@@ -54,11 +52,11 @@ Just download the latest release (or any other specific version you want to try)
 
 The filename ends with `.zip`.
 
-For example, if you wish to download [fscrawler-2.2](https://repo1.maven.org/maven2/fr/pilato/elasticsearch/crawler/fscrawler/2.2/fscrawler-2.2.zip):
+For example, if you wish to download [fscrawler-2.3](https://repo1.maven.org/maven2/fr/pilato/elasticsearch/crawler/fscrawler/2.3/fscrawler-2.3.zip):
 
 ```sh
-wget https://repo1.maven.org/maven2/fr/pilato/elasticsearch/crawler/fscrawler/2.2/fscrawler-2.2.zip
-unzip fscrawler-2.2.zip
+wget https://repo1.maven.org/maven2/fr/pilato/elasticsearch/crawler/fscrawler/2.3/fscrawler-2.3.zip
+unzip fscrawler-2.3.zip
 ```
 
 The distribution contains:
@@ -109,8 +107,6 @@ suffix. So the `_id` for your document will be now `1.json`.
 
 * fscrawler comes with new mapping for folders. The change is really tiny so you can skip this step if you wish.
 We basically removed `name` field in the folder mapping as it was unused.
-You should remove existing files in `~/.fscrawler/_default/_mappings` before starting the new version so default
-mappings will be updated. If you modified manually mapping files, apply the modification you made on sample files.
 
 * The way FSCrawler computes now `path.virtual` for docs has changed. It now includes the filename.
 Instead of `/path/to` you will now get `/path/to/file.txt`.
@@ -125,6 +121,79 @@ You can disable explicitly it by setting `fs.pdf_ocr` to `false`.
 * All dates are now indexed in elasticsearch in UTC instead of without any time zone. For example, we were indexing
 previously a date like `2017-05-19T13:24:47.000`. Which was producing bad results when you were located in a time zone
 other than UTC. It's now indexed as `2017-05-19T13:24:47.000+0000`.
+
+* In order to be compatible with the coming 6.0 elasticsearch version, we need to get rid of types as only one type
+per index is still supported. Which means that we now create index named `job_name` and `job_name_folder` instead
+of one index `job_name` with two types `doc` and `folder`. If you are upgrading from FSCrawler 2.2, it requires that
+you reindex your existing data either by deleting the old index and running again FSCrawler or by using the
+[reindex API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html) as follows:
+
+```
+# Create folder index job_name_folder based on existing folder data
+POST _reindex
+{
+  "source": {
+    "index": "job_name",
+    "type": "folder"
+  },
+  "dest": {
+    "index": "job_name_folder"
+  }
+}
+# Remove old folder data from job_name index
+POST job_name/folder/_delete_by_query
+{
+  "query": {
+    "match_all": {}
+  }
+}
+```
+
+Note that you will need first to create the right settings and mappings so you can then run the reindex job.
+You can do that by launching `bin/fscrawler job_name --loop 0`.
+
+Better, you can run `bin/fscrawler job_name --upgrade` and let FSCrawler do all that for you. Note that this can take
+a loooong time.
+
+Also please be aware that some APIs used by the upgrade action are only available from elasticsearch 2.3 (reindex) or
+elasticsearch 5.0 (delete by query). If you are running an older version than 5.0 you need first to upgrade elasticsearch.
+
+This procedure only applies if you did not set previously `elasticsearch.type` setting (default value was `doc`).
+If you did, then you also need to reindex the existing documents to the default `doc` type as per elasticsearch 6.0:
+
+```
+# Copy old type doc to the default doc type
+POST _reindex
+{
+  "source": {
+    "index": "job_name",
+    "type": "your_type_here"
+  },
+  "dest": {
+    "index": "job_name",
+    "type": "doc"
+  }
+}
+# Remove old type data from job_name index
+POST job_name/your_type_here/_delete_by_query
+{
+  "query": {
+    "match_all": {}
+  }
+}
+```
+
+But note that this last step can take a very loooong time and will generate a lot of IO on your disk.
+It might be easier in such case to restart fscrawler from scratch.
+
+* As seen in the previous point, we now have 2 indices instead of a single one. Which means that `elasticsearch.index`
+setting has been split to `elasticsearch.index` and `elasticsearch.index_folder`. By default, it's set to the
+crawler name and the crawler name plus `_folder`. Note that the `upgrade` feature performs that change for you.
+
+* fscrawler has removed now mapping files `doc.json` and `folder.json`. Mapping for doc is merged within `_settings.json`
+file and folder mapping is now part of `_settings_folder.json`. Which means you can remove old files to avoid confusion.
+You can simply remove existing files in `~/.fscrawler/_default` before starting the new version so default
+files will be created again.
 
 # User Guide
 
@@ -276,7 +345,7 @@ for the created document, like:
 {
   "ok" : true,
   "filename" : "test.txt",
-  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
+  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
 }
 ```
 
@@ -310,15 +379,14 @@ It means that if you stop the job at some point, FS crawler will restart it from
 
 FS crawler will also store default mappings and index settings for elasticsearch in `~/.fscrawler/_default/_mappings`:
 
-* `1/doc.json`: for elasticsearch 1.x series document mapping
-* `1/folder.json`: for elasticsearch 1.x series folder mapping
-* `1/_settings.json`: for elasticsearch 1.x series index settings
-* `2/doc.json`: for elasticsearch 2.x series document mapping
-* `2/folder.json`: for elasticsearch 2.x series folder mapping
-* `2/_settings.json`: for elasticsearch 2.x series index settings
-* `5/doc.json`: for elasticsearch 5.x series document mapping
-* `5/folder.json`: for elasticsearch 5.x series folder mapping
-* `5/_settings.json`: for elasticsearch 5.x series index settings
+* `1/_settings_doc.json`: for elasticsearch 1.x series document index settings
+* `1/_settings_folder.json`: for elasticsearch 1.x series folder index settings
+* `2/_settings_doc.json`: for elasticsearch 2.x series document index settings
+* `2/_settings_folder.json`: for elasticsearch 2.x series folder index settings
+* `5/_settings_doc.json`: for elasticsearch 5.x series document index settings
+* `5/_settings_folder.json`: for elasticsearch 5.x series folder index settings
+* `6/_settings_doc.json`: for elasticsearch 6.x series document index settings
+* `6/_settings_folder.json`: for elasticsearch 6.x series folder index settings
 
 Read [Mapping](#mapping) for more information.
 
@@ -412,7 +480,7 @@ The job file must comply to the following `json` specifications:
       "scheme" : "HTTP"
     } ],
     "index" : "docs",
-    "type" : "doc",
+    "index_folder" : "folders",
     "bulk_size" : 100,
     "flush_interval" : "5s",
     "username" : "username",
@@ -449,8 +517,8 @@ You can define the most simple crawler job by writing a `~/.fscrawler/test/_sett
 }
 ```
 
-This will scan every 15 minutes all documents available in `/tmp/es` dir and will index them into `test` index with
-`doc` type. It will connect to an elasticsearch cluster running on `127.0.0.1`, port `9200`.
+This will scan every 15 minutes all documents available in `/tmp/es` dir and will index them into `test_doc` index.
+It will connect to an elasticsearch cluster running on `127.0.0.1`, port `9200`.
 
 **Note**: `name` is a mandatory field.
 
@@ -479,7 +547,7 @@ Here is a list of Local FS settings (under `fs.` prefix)`:
 | `fs.continue_on_error`           | `false`       | [Continue on File Permission Error](#continue-on-error) (from 2.3)                |
 | `fs.pdf_ocr`                     | `true`        | [Run OCR on PDF documents](#ocr-integration) (from 2.3)                           |
 | `fs.indexed_chars`               | `100000.0`    | [Extracted characters](#extracted-characters)                                     |
-| `fs.checksum`                    | `null`        | [File signature](#file-signature)                                                 |
+| `fs.checksum`                    | `null`        | [File Checksum](#file-checksum)                                                 |
 
 #### Root directory
 
@@ -638,8 +706,8 @@ If you have more than one type, create as many crawlers as types:
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type1"
+    "index": "mydocs1",
+    "index_folder": "myfolders1"
   }
 }
 ```
@@ -654,8 +722,8 @@ If you have more than one type, create as many crawlers as types:
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type2"
+    "index": "mydocs2",
+    "index_folder": "myfolders2"
   }
 }
 ```
@@ -670,8 +738,8 @@ If you have more than one type, create as many crawlers as types:
 	"xml_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type3"
+    "index": "mydocs3",
+    "index_folder": "myfolders3"
   }
 }
 ```
@@ -692,8 +760,8 @@ You can also index many types from one single dir using two crawlers scanning th
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type1"
+    "index": "mydocs1",
+    "index_folder": "myfolders1"
   }
 }
 ```
@@ -709,8 +777,8 @@ You can also index many types from one single dir using two crawlers scanning th
 	"json_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type2"
+    "index": "mydocs2",
+    "index_folder": "myfolders2"
   }
 }
 ```
@@ -726,8 +794,8 @@ You can also index many types from one single dir using two crawlers scanning th
 	"xml_support" : true
   },
   "elasticsearch": {
-    "index": "mydocs",
-    "type": "type3"
+    "index": "mydocs3",
+    "index_folder": "myfolders3"
   }
 }
 ```
@@ -1120,8 +1188,8 @@ Here is a list of Elasticsearch settings (under `elasticsearch.` prefix)`:
 
 |               Name               |    Default value     |                                 Documentation                                     |
 |----------------------------------|----------------------|-----------------------------------------------------------------------------------|
-| `elasticsearch.index`            | job name             | Index name. See [Index settings](#index-settings)                                 |
-| `elasticsearch.type`             | `"doc"`              | Type name. See [Type name and mapping](#type-name-and-mapping)                    |
+| `elasticsearch.index`            | job name             | Index name for docs. See [Index settings](#index-settings)                        |
+| `elasticsearch.index_folder`     | job name + _folder   | Index name for folders. See [Index settings](#index-settings)                     |
 | `elasticsearch.bulk_size`        | `100`                | [Bulk settings](#bulk-settings)                                                   |
 | `elasticsearch.flush_interval`   | `"5s"`               | [Bulk settings](#bulk-settings)                                                   |
 | `elasticsearch.pipeline`         | `null`               | [Using Ingest Node Pipeline](#using-ingest-node-pipeline) (from 2.2)              |
@@ -1131,8 +1199,8 @@ Here is a list of Elasticsearch settings (under `elasticsearch.` prefix)`:
 
 #### Index settings
 
-By default, FS crawler will index your data in an index which name is the same as the crawler name (`name` property).
-You can change it by setting `index` field:
+By default, FS crawler will index your data in an index which name is the same as the crawler name (`name` property)
+plus `_doc` suffix, like `test_doc`. You can change it by setting `index` field:
 
 ```json
 {
@@ -1143,39 +1211,35 @@ You can change it by setting `index` field:
 }
 ```
 
-When FS crawler needs to create the index, it applies some default settings which are read from
-`~/.fscrawler/_default/5/_settings.json`. You can read its content from
-[the source](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/_settings.json).
+When FS crawler needs to create the doc index, it applies some default settings and mappings which are read from
+`~/.fscrawler/_default/5/_settings_doc.json`.
+You can read its content from [the source](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/_settings_doc.json).
 
 Settings define an analyzer named `fscrawler_path` which uses a
 [path hierarchy tokenizer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-pathhierarchy-tokenizer.html).
 
-
-#### Type name and mapping
-
-By default, FS crawler will index your data using `doc` as the type name.
-You can change it by setting `type` field:
+FS crawler will also index folders in an index which name is the same as the crawler name (`name` property)
+plus `_folder` suffix, like `test_folder`. You can change it by setting `index_folder` field:
 
 ```json
 {
-  "name" : "test",
-  "elasticsearch" : {
-    "type" : "mydocument"
-  }
+ "name" : "test",
+ "elasticsearch" : {
+   "index_folder" : "folders"
+ }
 }
 ```
 
-When the FS crawler detects a new type, it creates automatically a mapping for this type.
-The default mapping is read from `~/.fscrawler/_default/5/doc.json` which you can read from
-[the source](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/doc.json).
+FS crawler applies as well a mapping automatically which is read from `~/.fscrawler/_default/5/_settings_folder.json`.
+[Source here](src/main/resources/fr/pilato/elasticsearch/crawler/fs/_default/5/_settings_folder.json).
 
-You can also display the index mapping being used with Kibana
+You can also display the index mapping being used with Kibana:
 
 ```
-GET docs/doc/_mapping
+GET docs/_mapping
 ```
 
-or fall back to the command line
+Or fall back to the command line:
 
 ```sh
 curl 'http://localhost:9200/docs/_mapping?pretty'
@@ -1183,108 +1247,128 @@ curl 'http://localhost:9200/docs/_mapping?pretty'
 
 ##### Creating your own mapping (analyzers)
 
-If you want to define your own mapping to set analyzers for example, you can either push the mapping or define a
-`~/.fscrawler/_default/5/doc.json` document which contains the mapping you wish **before starting the FS crawler**.
+If you want to define your own index settings and mapping to set analyzers for example, you can either create the index
+and push the mapping or define a
+`~/.fscrawler/_default/5/_settings_doc.json` document which contains the index settings and mappings you wish
+**before starting the FS crawler**.
 
 The following example uses a `french` analyzer to index the `content` field.
 
 ```json
 {
-  "properties" : {
-    "attachment" : {
-      "type" : "binary",
-      "doc_values" : false
-    },
-    "attributes" : {
-      "properties" : {
-        "group" : {
-          "type" : "keyword"
-        },
-        "owner" : {
-          "type" : "keyword"
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "fscrawler_path": {
+          "tokenizer": "fscrawler_path"
+        }
+      },
+      "tokenizer": {
+        "fscrawler_path": {
+          "type": "path_hierarchy"
         }
       }
-    },
-    "content" : {
-      "type" : "text",
-      "analyzer" : "french"
-    },
-    "file" : {
+    }
+  },
+  "mappings": {
+    "doc": {
       "properties" : {
-        "content_type" : {
-          "type" : "keyword"
+        "attachment" : {
+          "type" : "binary",
+          "doc_values" : false
         },
-        "filename" : {
-          "type" : "keyword"
-        },
-        "extension" : {
-          "type" : "keyword"
-        },
-        "filesize" : {
-          "type" : "long"
-        },
-        "indexed_chars" : {
-          "type" : "long"
-        },
-        "indexing_date" : {
-          "type" : "date",
-          "format" : "dateOptionalTime"
-        },
-        "last_modified" : {
-          "type" : "date",
-          "format" : "dateOptionalTime"
-        },
-        "checksum": {
-          "type": "keyword"
-        },
-        "url" : {
-          "type" : "keyword",
-          "index" : false
-        }
-      }
-    },
-    "meta" : {
-      "properties" : {
-        "author" : {
-          "type" : "text"
-        },
-        "date" : {
-          "type" : "date",
-          "format" : "dateOptionalTime"
-        },
-        "keywords" : {
-          "type" : "text"
-        },
-        "title" : {
-          "type" : "text"
-        },
-        "language" : {
-          "type" : "keyword"
-        }
-      }
-    },
-    "path" : {
-      "properties" : {
-        "real" : {
-          "type" : "keyword",
-          "fields": {
-            "tree": {
-              "type" : "text",
-              "analyzer": "fscrawler_path",
-              "fielddata": true
+        "attributes" : {
+          "properties" : {
+            "group" : {
+              "type" : "keyword"
+            },
+            "owner" : {
+              "type" : "keyword"
             }
           }
         },
-        "root" : {
-          "type" : "keyword"
+        "content" : {
+          "type" : "text",
+          "analyzer" : "french"
         },
-        "virtual" : {
-          "type" : "keyword",
-          "fields": {
-            "tree": {
-              "type" : "text",
-              "analyzer": "fscrawler_path",
-              "fielddata": true
+        "file" : {
+          "properties" : {
+            "content_type" : {
+              "type" : "keyword"
+            },
+            "filename" : {
+              "type" : "keyword"
+            },
+            "extension" : {
+              "type" : "keyword"
+            },
+            "filesize" : {
+              "type" : "long"
+            },
+            "indexed_chars" : {
+              "type" : "long"
+            },
+            "indexing_date" : {
+              "type" : "date",
+              "format" : "dateOptionalTime"
+            },
+            "last_modified" : {
+              "type" : "date",
+              "format" : "dateOptionalTime"
+            },
+            "checksum": {
+              "type": "keyword"
+            },
+            "url" : {
+              "type" : "keyword",
+              "index" : false
+            }
+          }
+        },
+        "meta" : {
+          "properties" : {
+            "author" : {
+              "type" : "text"
+            },
+            "date" : {
+              "type" : "date",
+              "format" : "dateOptionalTime"
+            },
+            "keywords" : {
+              "type" : "text"
+            },
+            "title" : {
+              "type" : "text"
+            },
+            "language" : {
+              "type" : "keyword"
+            }
+          }
+        },
+        "path" : {
+          "properties" : {
+            "real" : {
+              "type" : "keyword",
+              "fields": {
+                "tree": {
+                  "type" : "text",
+                  "analyzer": "fscrawler_path",
+                  "fielddata": true
+                }
+              }
+            },
+            "root" : {
+              "type" : "keyword"
+            },
+            "virtual" : {
+              "type" : "keyword",
+              "fields": {
+                "tree": {
+                  "type" : "text",
+                  "analyzer": "fscrawler_path",
+                  "fielddata": true
+                }
+              }
             }
           }
         }
@@ -1300,26 +1384,7 @@ Note that if you want to push manually the mapping to elasticsearch you can use 
 # Create index (don't forget to add the fscrawler_path analyzer)
 PUT docs
 {
-  "settings": {
-    "analysis": {
-      "analyzer": {
-        "fscrawler_path": {
-          "tokenizer": "fscrawler_path"
-        }
-      },
-      "tokenizer": {
-        "fscrawler_path": {
-          "type": "path_hierarchy"
-        }
-      }
-    }
-  }
-}
-
-# Create the mapping
-PUT docs/doc/_mapping
-{
-  // Same mapping as previously seen
+  // Same index settings as previously seen
 }
 ```
 
@@ -1331,18 +1396,17 @@ running version `5.x`.
 If you create the following files, they will be picked up at job start time instead of the
 [default ones](#autogenerated-mapping):
 
-* `~/.fscrawler/{job_name}/_mappings/5/doc.json`
-* `~/.fscrawler/{job_name}/_mappings/5/folder.json`
-* `~/.fscrawler/{job_name}/_mappings/5/_settings.json`
+* `~/.fscrawler/{job_name}/_mappings/5/_settings_doc.json`
+* `~/.fscrawler/{job_name}/_mappings/5/_settings_folder.json`
 
 You can do the same for other elasticsearch versions with:
 
-* `~/.fscrawler/{job_name}/_mappings/1/doc.json` for 1.x series
-* `~/.fscrawler/{job_name}/_mappings/1/folder.json` for 1.x series
-* `~/.fscrawler/{job_name}/_mappings/1/_settings.json` for 1.x series
-* `~/.fscrawler/{job_name}/_mappings/2/doc.json` for 2.x series
-* `~/.fscrawler/{job_name}/_mappings/2/folder.json` for 2.x series
-* `~/.fscrawler/{job_name}/_mappings/2/_settings.json` for 1.x series
+* `~/.fscrawler/{job_name}/_mappings/1/_settings_doc.json` for 1.x series
+* `~/.fscrawler/{job_name}/_mappings/1/_settings_folder.json` for 1.x series
+* `~/.fscrawler/{job_name}/_mappings/2/_settings_doc.json` for 2.x series
+* `~/.fscrawler/{job_name}/_mappings/2/_settings_folder.json` for 2.x series
+* `~/.fscrawler/{job_name}/_mappings/6/_settings_doc.json` for 6.x series
+* `~/.fscrawler/{job_name}/_mappings/6/_settings_folder.json` for 6.x series
 
 
 ##### Replace existing mapping
@@ -1352,25 +1416,6 @@ Therefore, you'll need first to remove existing index, which means remove all ex
 with the new mapping.
 
 You might to try [elasticsearch Reindex API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html) though.
-
-##### Upgrading an existing mapping
-
-It could happen that you would like to add new sub fields or are upgrading from a previous version of FS crawler
-which requires that you upgrade the mapping before sending the first documents.
-
-The `--upgrade_mapping` option will help you.
-
-The following command will upgrade the mappings related to the `job_name` job and then will run normally:
-
-```sh
-bin/fscrawler job_name --upgrade_mapping
-```
-
-If you just want to upgrade the mapping without launching the job itself, you can use the [loop](#crawler-options) option:
-
-```sh
-bin/fscrawler job_name --upgrade_mapping --loop 0
-```
 
 
 #### Bulk settings
@@ -1401,6 +1446,7 @@ Or you can decrease the `bulk_size` setting to a smaller value.
 
 If you are using an elasticsearch cluster running a 5.0 or superior version, you
 can use an Ingest Node pipeline to transform documents sent by FS crawler before they are actually indexed.
+Please note that folder objects are not sent through the pipeline as they are more internal objects.
 
 For example, if you have the following pipeline:
 
@@ -1581,7 +1627,7 @@ Here is a typical JSON document generated by the crawler:
 You can use the content field to perform full-text search on
 
 ```
-GET docs/doc/_search
+GET docs/_search
 {
   "query" : {
     "match" : {
@@ -1594,7 +1640,7 @@ GET docs/doc/_search
 You can use meta fields to perform search on.
 
 ```
-GET docs/doc/_search
+GET docs/_search
 {
   "query" : {
     "term" : {
@@ -1607,7 +1653,7 @@ GET docs/doc/_search
 Or run some aggregations on top of them, like:
 
 ```
-GET docs/doc/_search
+GET docs/_search
 {
   "size": 0,
   "aggs": {
@@ -1663,8 +1709,8 @@ It will give you a response similar to:
         "port" : 9200,
         "scheme" : "HTTP"
       } ],
-      "index" : "fscrawler-rest-tests",
-      "type" : "doc",
+      "index" : "fscrawler-rest-tests_doc",
+      "index_folder" : "fscrawler-rest-tests_folder",
       "bulk_size" : 100,
       "flush_interval" : "5s",
       "username" : "elastic"
@@ -1694,7 +1740,7 @@ It will give you a response similar to:
 {
   "ok" : true,
   "filename" : "test.txt",
-  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
+  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534"
 }
 ```
 
@@ -1702,14 +1748,14 @@ The `url` represents the elasticsearch address of the indexed document.
 If you call:
 
 ```sh
-curl http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534?pretty
+curl http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534?pretty
 ```
 
 You will get back your document as it has been stored by elasticsearch:
 
 ```json
 {
-  "_index" : "fscrawler-rest-tests",
+  "_index" : "fscrawler-rest-tests_doc",
   "_type" : "doc",
   "_id" : "dd18bf3a8ea2a3e53e2661c7fb53534",
   "_version" : 1,
@@ -1752,7 +1798,7 @@ will give
 {
   "ok" : true,
   "filename" : "test.txt",
-  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests/doc/dd18bf3a8ea2a3e53e2661c7fb53534",
+  "url" : "http://127.0.0.1:9200/fscrawler-rest-tests_doc/doc/dd18bf3a8ea2a3e53e2661c7fb53534",
   "doc" : {
     "content" : "This file contains some words.\n",
     "meta" : {
@@ -1862,202 +1908,6 @@ to `false`:
 
 To use FS crawler with [docker](https://www.docker.com/), check
 [docker-fscrawler](https://github.com/shadiakiki1986/docker-fscrawler) recipe.
-
-
-# Developing on fscrawler project
-
-If you are thinking of contributing on the project, which is highly appreciated, here are
-some tricks which might help.
-
-## Building
-
-The project is built using [Apache Maven](https://maven.apache.org/).
-It needs Java >= 1.8.
-
-To build it, just run:
-
-```sh
-git clone https://github.com/dadoonet/fscrawler.git
-cd fscrawler
-mvn clean install
-```
-
-You can also skip running tests with:
-
-```sh
-mvn clean install -DskipTests
-```
-
-## Testing
-
-Tests are now separated between unit tests and integration tests:
-
-* Unit tests are defined in [fr.pilato.elasticsearch.crawler.fs.test.unit](src/test/java/fr/pilato/elasticsearch/crawler/fs/test/unit)
-package.
-* Integration tests are defined in [fr.pilato.elasticsearch.crawler.fs.test.integration](src/test/java/fr/pilato/elasticsearch/crawler/fs/test/integration)
-package.
-
-### Integration tests
-
-Integration tests only run when an elasticsearch cluster is running at [127.0.0.1:9400](http://127.0.0.1:9400).
-When running with maven, an elasticsearch instance is automatically downloaded from maven central, installed
-and launched before integration tests start and stopped after integration tests.
-
-This local test instance is installed under `target/integration-tests/run`.
-If you have any trouble, you can stop any running instance, then run `mvn clean` to clean all left data.
-
-Note that a PID file is generated in `target/integration-tests/run/es.pid`.
-
-For debugging purpose, you can still run integration tests from your IDE.
-Just download any version of elasticsearch you wish, and launch it with:
-
-```sh
-# elasticsearch 1.x
-bin/elasticsearch -Des.http.port=9400 -Des.network.host=127.0.0.1
-# elasticsearch 2.x
-bin/elasticsearch -Des.http.port=9400
-# elasticsearch 5.x
-bin/elasticsearch -Ehttp.port=9400
-```
-
-Integration tests will detect the running instance and will not ignore anymore those tests.
-
-You can also tell maven to run integration tests by deploying another version of elasticsearch:
-
-```sh
-# For elasticsearch 1.x series
-mvn install -Pes-1x
-mvn install -Pes-2x
-```
-
-By default, it will run integration tests against elasticsearch 5.x series cluster.
-
-### Running tests against an external cluster
-
-By default, FS Crawler will run tests against a cluster running at `127.0.0.1` on port `9400`.
-It will detect if this cluster is secured with [X-Pack](https://www.elastic.co/downloads/x-pack) and if so, it
-will try to authenticate with user `elastic` and password `changeme`.
-
-But, if you want to run the test suite against another cluster, using other credentials, you can use the following
-system parameters:
-
-* `tests.cluster.host`: hostname or IP (defaults to `127.0.0.1`)
-* `tests.cluster.port`: port (defaults to `9400`)
-* `tests.cluster.scheme`: `HTTP` or `HTTPS` (defaults to `HTTP`)
-* `tests.cluster.user`: username (defaults to `elastic`)
-* `tests.cluster.pass`: password (defaults to `changeme`)
-
-For example, if you have a cluster running on [Elastic Cloud](https://cloud.elastic.co/), you can use:
-
-```sh
-mvn clean install -Dtests.cluster.host=CLUSTERID.eu-west-1.aws.found.io -Dtests.cluster.port=9200 -Dtests.cluster.user=elastic -Dtests.cluster.pass=GENERATEDPASSWORD
-```
-
-or better:
-
-```sh
-mvn clean install -Dtests.cluster.host=CLUSTERID.eu-west-1.aws.found.io -Dtests.cluster.port=9243 -Dtests.cluster.scheme=HTTPS -Dtests.cluster.user=elastic -Dtests.cluster.pass=GENERATEDPASSWORD
-```
-
-### Running REST tests using another port
-
-By default, FS crawler will run the integration tests using port `8080` for the REST service.
-If you want to change it because this port is already used, you can start your tests with `-Dtests.rest.port=8280` which
-will start the REST service on port `8280`
-
-
-### Randomized testing
-
-FS Crawler uses [Randomized testing framework](https://github.com/randomizedtesting/randomizedtesting).
-In case of failure, it will print a line like:
-
-```
-REPRODUCE WITH:
-mvn test -Dtests.seed=AC6992149EB4B547 -Dtests.class=fr.pilato.elasticsearch.crawler.fs.test.unit.tika.TikaDocParserTest -Dtests.method="testExtractFromRtf" -Dtests.locale=ga-IE -Dtests.timezone=Canada/Saskatchewan
-```
-
-
-It also exposes some parameters you can use at build time:
-
-* `tests.output`: display test output. For example:
-
-```sh
-mvn install -Dtests.output=always
-mvn install -Dtests.output=onError
-```
-
-* `tests.locale`: run the tests using a given Locale. For example:
-
-```sh
-mvn install -Dtests.locale=random
-mvn install -Dtests.locale=fr-FR
-```
-
-* `tests.timezone`: run the tests using a given Timezone. For example:
-
-```sh
-mvn install -Dtests.timezone=random
-mvn install -Dtests.timezone=CEST
-mvn install -Dtests.timezone=-0200
-```
-
-* `tests.verbose`: adds running tests details while executing tests
-
-```sh
-mvn install -Dtests.verbose
-```
-
-* `tests.parallelism`: number of JVMs to start to run tests
-
-```sh
-mvn install -Dtests.parallelism=auto
-mvn install -Dtests.parallelism=max
-mvn install -Dtests.parallelism=1
-```
-
-* `tests.seed`: specify the seed to use to run the test suite if you need to reproduce a failure
-given a specific test context.
-
-```sh
-mvn test -Dtests.seed=E776CE45185A6E7A
-```
-
-* `tests.leaveTemporary`: leave temporary files on disk
-
-```sh
-mvn test -Dtests.leaveTemporary
-```
-
-
-## Releasing
-
-To release a version, just run:
-
-```sh
-./release.sh
-```
-
-The release script will:
-
-* Create a release branch
-* Replace SNAPSHOT version by the final version number
-* Commit the change
-* Run tests against elasticsearch 1.x series
-* Run tests against elasticsearch 2.x series
-* Run tests against elasticsearch 5.x series
-* Build the final artifacts using release profile (signing artifacts and generating all needed files)
-* Tag the version
-* Prepare the announcement email
-* Deploy to https://oss.sonatype.org/
-* Prepare the next SNAPSHOT version
-* Commit the change
-* Release the Sonatype staging repository
-* Merge the release branch to the branch we started from
-* Push the changes to origin
-* Announce the version on https://discuss.elastic.co/c/annoucements/community-ecosystem
-
-You will be guided through all the steps.
-
 
 # License
 

@@ -27,6 +27,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SETTINGS_FILE;
+import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.INDEX_SETTINGS_FOLDER_FILE;
 import static fr.pilato.elasticsearch.crawler.fs.util.FsCrawlerUtil.extractMajorVersionNumber;
 
 public class ElasticsearchClientManager {
@@ -35,7 +37,8 @@ public class ElasticsearchClientManager {
     private final FsSettings settings;
 
     private ElasticsearchClient client = null;
-    private BulkProcessor bulkProcessor = null;
+    private BulkProcessor bulkProcessorDoc = null;
+    private BulkProcessor bulkProcessorFolder = null;
 
     public ElasticsearchClientManager(Path config, FsSettings settings) {
         this.config = config;
@@ -49,21 +52,33 @@ public class ElasticsearchClientManager {
         return client;
     }
 
-    public BulkProcessor bulkProcessor() {
-        if (bulkProcessor == null) {
-            throw new RuntimeException("You must call start() before bulkProcessor()");
+    public BulkProcessor bulkProcessorDoc() {
+        if (bulkProcessorDoc == null) {
+            throw new RuntimeException("You must call start() before bulkProcessorDoc()");
         }
-        return bulkProcessor;
+        return bulkProcessorDoc;
+    }
+
+    public BulkProcessor bulkProcessorFolder() {
+        if (bulkProcessorFolder == null) {
+            throw new RuntimeException("You must call start() before bulkProcessorFolder()");
+        }
+        return bulkProcessorFolder;
     }
 
     public void start() throws Exception {
+        if (client != null) {
+            // The client has already been initialized. Let's skip this again
+            return;
+        }
+
         try {
             // Create an elasticsearch client
             client = new ElasticsearchClient(settings.getElasticsearch());
             // We set what will be elasticsearch behavior as it depends on the cluster version
             client.setElasticsearchBehavior();
         } catch (Exception e) {
-            logger.warn("failed to create index [{}], disabling crawler...", settings.getElasticsearch().getIndex());
+            logger.warn("failed to create elasticsearch client, disabling crawler...");
             throw e;
         }
 
@@ -73,60 +88,64 @@ public class ElasticsearchClientManager {
                     ", but your elasticsearch cluster does not support this feature.");
         }
 
-        bulkProcessor = BulkProcessor.retryBulkProcessor(client, settings.getElasticsearch().getBulkSize(),
+        bulkProcessorDoc = BulkProcessor.retryBulkProcessor(client, settings.getElasticsearch().getBulkSize(),
                 settings.getElasticsearch().getFlushInterval(), settings.getElasticsearch().getPipeline());
+        bulkProcessorFolder = BulkProcessor.retryBulkProcessor(client, settings.getElasticsearch().getBulkSize(),
+                settings.getElasticsearch().getFlushInterval(), null);
     }
 
-    public void createIndexAndMappings(FsSettings settings, boolean updateMapping) throws Exception {
+    public void createIndices(FsSettings settings) throws Exception {
         String elasticsearchVersion;
         Path jobMappingDir = config.resolve(settings.getName()).resolve("_mappings");
 
-        try {
-            // Let's read the current version of elasticsearch cluster
-            String version = client.findVersion();
-            logger.debug("FS crawler connected to an elasticsearch [{}] node.", version);
+        // Let's read the current version of elasticsearch cluster
+        String version = client.findVersion();
+        logger.debug("FS crawler connected to an elasticsearch [{}] node.", version);
 
-            elasticsearchVersion = extractMajorVersionNumber(version);
+        elasticsearchVersion = extractMajorVersionNumber(version);
 
-            // If needed, we create the new settings for this index
-            // Read index settings from resources
-            String indexSettings = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, FsCrawlerUtil.INDEX_SETTINGS_FILE);
-            client.createIndex(settings.getElasticsearch().getIndex(), true, indexSettings);
-
-        } catch (Exception e) {
-            logger.warn("failed to create index [{}], disabling crawler...", settings.getElasticsearch().getIndex());
-            throw e;
+        // If needed, we create the new settings for this files index
+        if (settings.getFs().isAddAsInnerObject() == false || (!settings.getFs().isJsonSupport() && !settings.getFs().isXmlSupport())) {
+            createIndex(jobMappingDir, elasticsearchVersion, INDEX_SETTINGS_FILE, settings.getElasticsearch().getIndex());
+        } else {
+            client.createIndex(settings.getElasticsearch().getIndex(), true, null);
         }
 
-        try {
-            // If needed, we create the new mapping for files
-            if (settings.getFs().isAddAsInnerObject() == false || (!settings.getFs().isJsonSupport() && !settings.getFs().isXmlSupport())) {
-                // Read file mapping from resources
-                String mapping = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, FsCrawlerUtil.INDEX_TYPE_DOC);
-                ElasticsearchClient.pushMapping(client, settings.getElasticsearch().getIndex(), settings.getElasticsearch().getType(),
-                        mapping, updateMapping);
-            }
+        // If needed, we create the new settings for this folder index
+        if (settings.getFs().isIndexFolders()) {
+            createIndex(jobMappingDir, elasticsearchVersion, INDEX_SETTINGS_FOLDER_FILE, settings.getElasticsearch().getIndexFolder());
+        } else {
+            client.createIndex(settings.getElasticsearch().getIndexFolder(), true, null);
+        }
+    }
 
-            // If needed, we create the new mapping for folders
-            if (settings.getFs().isIndexFolders()) {
-                String mapping = FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, FsCrawlerUtil.INDEX_TYPE_FOLDER);
-                ElasticsearchClient.pushMapping(client, settings.getElasticsearch().getIndex(), FsCrawlerUtil.INDEX_TYPE_FOLDER,
-                        mapping, updateMapping);
-            }
+    private void createIndex(Path jobMappingDir, String elasticsearchVersion, String indexSettingsFile, String indexName) throws Exception {
+        try {
+            // If needed, we create the new settings for this files index
+            String indexSettings =
+                    FsCrawlerUtil.readJsonFile(jobMappingDir, config, elasticsearchVersion, indexSettingsFile);
+
+            client.createIndex(indexName, true, indexSettings);
         } catch (Exception e) {
-            logger.warn("failed to {} mapping for [{}/{}], disabling crawler...", updateMapping ? "update" : "create",
-                    settings.getElasticsearch().getIndex(), settings.getElasticsearch().getType());
+            logger.warn("failed to create index [{}], disabling crawler...", indexName);
             throw e;
         }
     }
 
     public void close() {
         logger.debug("Closing Elasticsearch client manager");
-        if (bulkProcessor != null) {
+        if (bulkProcessorDoc != null) {
             try {
-                bulkProcessor.close();
+                bulkProcessorDoc.close();
             } catch (InterruptedException e) {
-                logger.warn("Can not close bulk processor", e);
+                logger.warn("Can not close doc bulk processor", e);
+            }
+        }
+        if (bulkProcessorFolder != null) {
+            try {
+                bulkProcessorFolder.close();
+            } catch (InterruptedException e) {
+                logger.warn("Can not close folder bulk processor", e);
             }
         }
         if (client != null) {
