@@ -21,14 +21,14 @@ package fr.pilato.elasticsearch.crawler.fs.rest;
 
 
 import fr.pilato.elasticsearch.crawler.fs.SignTool;
-import fr.pilato.elasticsearch.crawler.fs.client.BulkProcessor;
-import fr.pilato.elasticsearch.crawler.fs.client.IndexRequest;
 import fr.pilato.elasticsearch.crawler.fs.meta.doc.Doc;
 import fr.pilato.elasticsearch.crawler.fs.meta.doc.DocParser;
 import fr.pilato.elasticsearch.crawler.fs.meta.settings.Elasticsearch;
 import fr.pilato.elasticsearch.crawler.fs.meta.settings.FsSettings;
 import fr.pilato.elasticsearch.crawler.fs.tika.TikaDocParser;
 import fr.pilato.elasticsearch.crawler.fs.util.TimeBasedUUIDGenerator;
+import org.elasticsearch.action.bulk.BulkProcessor;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
@@ -80,7 +80,7 @@ public class UploadApi extends RestApi {
         // Create the Doc object
         Doc doc = new Doc();
 
-        String filename = d.getFileName();
+        String filename = new String(d.getFileName().getBytes("ISO-8859-1"), "UTF-8");
         long filesize = d.getSize();
 
         // File
@@ -108,7 +108,8 @@ public class UploadApi extends RestApi {
             logger.debug("Simulate mode is on, so we skip sending document [{}] to elasticsearch.", filename);
         } else {
             logger.debug("Sending document [{}] to elasticsearch.", filename);
-            bulkProcessor.add(new IndexRequest(settings.getElasticsearch().getIndex(), "doc", id).source(DocParser.toJson(doc)));
+            bulkProcessor.add(new org.elasticsearch.action.index.IndexRequest(settings.getElasticsearch().getIndex(), "doc", id)
+                    .source(DocParser.toJson(doc), XContentType.JSON));
             // Elasticsearch entity coordinates (we use the first node address)
             Elasticsearch.Node node = settings.getElasticsearch().getNodes().get(0);
             url = buildUrl(

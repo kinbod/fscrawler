@@ -48,6 +48,7 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumSet;
@@ -218,6 +219,13 @@ public class FsCrawlerUtil extends MetaParser {
         return Date.from(ldt.atZone(TimeZone.getDefault().toZoneId()).toInstant());
     }
 
+    public static Date localDateTimeToDate(String sDate) {
+        if (sDate == null) {
+            return null;
+        }
+        return localDateTimeToDate(LocalDateTime.parse(sDate, DateTimeFormatter.ISO_DATE_TIME));
+    }
+
     public static String getFileExtension(File file) {
         return FilenameUtils.getExtension(file.getAbsolutePath()).toLowerCase();
     }
@@ -254,16 +262,6 @@ public class FsCrawlerUtil extends MetaParser {
             logger.warn("Failed to determine 'group' of {}: {}", file, e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * Extracts the major digits from a version string
-     * @param version A version like x.y.z-WHATEVER
-     * @return x
-     */
-    public static String extractMajorVersionNumber(String version) {
-        String[] digits = version.split("\\.");
-        return digits[0];
     }
 
     private static final String CLASSPATH_RESOURCES_ROOT = "/fr/pilato/elasticsearch/crawler/fs/_default/";

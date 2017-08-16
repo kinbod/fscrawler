@@ -103,6 +103,70 @@ public class FsMappingTest extends AbstractFSCrawlerTestCase {
                 "            \"language\" : {\n" +
                 "              \"type\" : \"string\",\n" +
                 "              \"index\": \"not_analyzed\"\n" +
+                "            },\n" +
+                "            \"format\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"identifier\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"contributor\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"coverage\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"modifier\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"creator_tool\" : {\n" +
+                "              \"type\" : \"string\",\n" +
+                "              \"index\": \"not_analyzed\"\n" +
+                "            },\n" +
+                "            \"publisher\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"relation\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"rights\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"source\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"type\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"description\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"created\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"print_date\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"metadata_date\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"latitude\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"longitude\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"altitude\" : {\n" +
+                "              \"type\" : \"string\"\n" +
+                "            },\n" +
+                "            \"rating\" : {\n" +
+                "              \"type\" : \"byte\"\n" +
+                "            },\n" +
+                "            \"comments\" : {\n" +
+                "              \"type\" : \"string\"\n" +
                 "            }\n" +
                 "          }\n" +
                 "        },\n" +
@@ -255,6 +319,7 @@ public class FsMappingTest extends AbstractFSCrawlerTestCase {
         logger.info("Settings used for doc index v5 : " + settings);
         assertThat(settings, is("{\n" +
                 "  \"settings\": {\n" +
+                "    \"index.mapping.total_fields.limit\": 2000,\n" +
                 "    \"analysis\": {\n" +
                 "      \"analyzer\": {\n" +
                 "        \"fscrawler_path\": {\n" +
@@ -322,9 +387,6 @@ public class FsMappingTest extends AbstractFSCrawlerTestCase {
                 "            }\n" +
                 "          }\n" +
                 "        },\n" +
-                "        \"object\" : {\n" +
-                "          \"type\" : \"object\"\n" +
-                "        },\n" +
                 "        \"meta\" : {\n" +
                 "          \"properties\" : {\n" +
                 "            \"author\" : {\n" +
@@ -342,6 +404,69 @@ public class FsMappingTest extends AbstractFSCrawlerTestCase {
                 "            },\n" +
                 "            \"language\" : {\n" +
                 "              \"type\" : \"keyword\"\n" +
+                "            },\n" +
+                "            \"format\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"identifier\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"contributor\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"coverage\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"modifier\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"creator_tool\" : {\n" +
+                "              \"type\" : \"keyword\"\n" +
+                "            },\n" +
+                "            \"publisher\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"relation\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"rights\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"source\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"type\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"description\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"created\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"print_date\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"metadata_date\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"latitude\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"longitude\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"altitude\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"rating\" : {\n" +
+                "              \"type\" : \"byte\"\n" +
+                "            },\n" +
+                "            \"comments\" : {\n" +
+                "              \"type\" : \"text\"\n" +
                 "            }\n" +
                 "          }\n" +
                 "        },\n" +
@@ -440,6 +565,7 @@ public class FsMappingTest extends AbstractFSCrawlerTestCase {
         logger.info("Settings used for doc index v6 : " + settings);
         assertThat(settings, is("{\n" +
                 "  \"settings\": {\n" +
+                "    \"index.mapping.total_fields.limit\": 2000,\n" +
                 "    \"analysis\": {\n" +
                 "      \"analyzer\": {\n" +
                 "        \"fscrawler_path\": {\n" +
@@ -507,9 +633,6 @@ public class FsMappingTest extends AbstractFSCrawlerTestCase {
                 "            }\n" +
                 "          }\n" +
                 "        },\n" +
-                "        \"object\" : {\n" +
-                "          \"type\" : \"object\"\n" +
-                "        },\n" +
                 "        \"meta\" : {\n" +
                 "          \"properties\" : {\n" +
                 "            \"author\" : {\n" +
@@ -527,6 +650,69 @@ public class FsMappingTest extends AbstractFSCrawlerTestCase {
                 "            },\n" +
                 "            \"language\" : {\n" +
                 "              \"type\" : \"keyword\"\n" +
+                "            },\n" +
+                "            \"format\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"identifier\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"contributor\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"coverage\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"modifier\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"creator_tool\" : {\n" +
+                "              \"type\" : \"keyword\"\n" +
+                "            },\n" +
+                "            \"publisher\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"relation\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"rights\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"source\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"type\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"description\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"created\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"print_date\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"metadata_date\" : {\n" +
+                "              \"type\" : \"date\",\n" +
+                "              \"format\" : \"dateOptionalTime\"\n" +
+                "            },\n" +
+                "            \"latitude\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"longitude\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"altitude\" : {\n" +
+                "              \"type\" : \"text\"\n" +
+                "            },\n" +
+                "            \"rating\" : {\n" +
+                "              \"type\" : \"byte\"\n" +
+                "            },\n" +
+                "            \"comments\" : {\n" +
+                "              \"type\" : \"text\"\n" +
                 "            }\n" +
                 "          }\n" +
                 "        },\n" +
