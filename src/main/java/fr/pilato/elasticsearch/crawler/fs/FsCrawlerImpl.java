@@ -262,7 +262,7 @@ public class FsCrawlerImpl {
         closed = true;
 
         synchronized(semaphore) {
-            semaphore.notify();
+            semaphore.notifyAll();
         }
 
         if (this.fsCrawlerThread != null) {
@@ -377,6 +377,7 @@ public class FsCrawlerImpl {
                     }
                 } catch (InterruptedException e) {
                     logger.debug("Fs crawler thread has been interrupted: [{}]", e.getMessage());
+                    Thread.currentThread().interrupt();
                 }
             }
         }
